@@ -22,7 +22,6 @@ from PyQt6.QtWidgets import (
     QMessageBox,
 )
 
-
 # ---------------------------------------------------------------------------
 # Конфиг
 # ---------------------------------------------------------------------------
@@ -48,15 +47,13 @@ except Exception:
 
 SERVER_URL = CONFIG.get("server_url", "http://127.0.0.1:8000").rstrip("/")
 MACHINE_ID = CONFIG.get("machine_id", "pc-01")
-BROWSER_BLACKLIST = {
-    name.lower()
-    for name in CONFIG.get("browser_blacklist", [])
-}
+BROWSER_BLACKLIST = {name.lower() for name in CONFIG.get("browser_blacklist", [])}
 
 
 # ---------------------------------------------------------------------------
 # Антибраузер
 # ---------------------------------------------------------------------------
+
 
 class AntiBrowserThread(QThread):
     def __init__(self):
@@ -85,6 +82,7 @@ class AntiBrowserThread(QThread):
 # ---------------------------------------------------------------------------
 # Основное приложение
 # ---------------------------------------------------------------------------
+
 
 class ExamClient(QWidget):
     def __init__(self):
@@ -341,11 +339,7 @@ class ExamClient(QWidget):
             self.show_task(0)
 
             expires_at = self.attempt.get("expires_at")
-            self.expires_at = (
-                datetime.fromisoformat(expires_at)
-                if expires_at
-                else None
-            )
+            self.expires_at = datetime.fromisoformat(expires_at) if expires_at else None
 
             self.start_blocker()
 

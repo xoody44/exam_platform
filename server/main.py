@@ -28,7 +28,6 @@ from sqlalchemy.orm import (
     Session,
 )
 
-
 # ---------------------------------------------------------------------------
 # Настройки
 # ---------------------------------------------------------------------------
@@ -64,6 +63,7 @@ def utcnow() -> datetime:
 # ---------------------------------------------------------------------------
 # Модели
 # ---------------------------------------------------------------------------
+
 
 class Class(Base):
     __tablename__ = "classes"
@@ -237,6 +237,7 @@ class Setting(Base):
 # Pydantic схемы
 # ---------------------------------------------------------------------------
 
+
 class StudentLoginIn(BaseModel):
     last_name: str
     first_name: str
@@ -312,6 +313,7 @@ app.add_middleware(
 # Зависимости
 # ---------------------------------------------------------------------------
 
+
 def get_db():
     db = SessionLocal()
     try:
@@ -365,6 +367,7 @@ def require_teacher(
 # ---------------------------------------------------------------------------
 # Вспомогательные функции
 # ---------------------------------------------------------------------------
+
 
 def normalize_text(value: Optional[str]) -> str:
     return " ".join((value or "").split()).strip()
@@ -427,11 +430,7 @@ def get_class_or_create(
 ) -> Class:
     letter = normalize_text(letter).upper()
 
-    cls = (
-        db.query(Class)
-        .filter(Class.number == number, Class.letter == letter)
-        .first()
-    )
+    cls = db.query(Class).filter(Class.number == number, Class.letter == letter).first()
 
     if cls:
         return cls
@@ -495,11 +494,7 @@ def get_student_or_create(
 
 
 def choose_variant(db: Session, student_id: int) -> Variant:
-    active_variants = (
-        db.query(Variant)
-        .filter(Variant.is_active == True)
-        .all()
-    )
+    active_variants = db.query(Variant).filter(Variant.is_active == True).all()
 
     if not active_variants:
         raise HTTPException(
@@ -507,11 +502,7 @@ def choose_variant(db: Session, student_id: int) -> Variant:
             detail="Нет активных вариантов",
         )
 
-    attempts = (
-        db.query(Attempt)
-        .filter(Attempt.student_id == student_id)
-        .all()
-    )
+    attempts = db.query(Attempt).filter(Attempt.student_id == student_id).all()
 
     already_taken_variant_ids = {
         attempt.variant_id for attempt in attempts if attempt.variant_id
@@ -527,11 +518,7 @@ def choose_variant(db: Session, student_id: int) -> Variant:
 
     loaded = []
     for variant in candidates:
-        count = (
-            db.query(Attempt)
-            .filter(Attempt.variant_id == variant.id)
-            .count()
-        )
+        count = db.query(Attempt).filter(Attempt.variant_id == variant.id).count()
         loaded.append((count, variant))
 
     min_load = min(item[0] for item in loaded)
@@ -586,9 +573,15 @@ def public_attempt(db: Session, attempt: Attempt, student: Student) -> dict:
         "attempt": {
             "id": attempt.id,
             "status": attempt.status,
-            "started_at": attempt.started_at.isoformat() if attempt.started_at else None,
-            "expires_at": attempt.expires_at.isoformat() if attempt.expires_at else None,
-            "finished_at": attempt.finished_at.isoformat() if attempt.finished_at else None,
+            "started_at": (
+                attempt.started_at.isoformat() if attempt.started_at else None
+            ),
+            "expires_at": (
+                attempt.expires_at.isoformat() if attempt.expires_at else None
+            ),
+            "finished_at": (
+                attempt.finished_at.isoformat() if attempt.finished_at else None
+            ),
             "primary_score": attempt.primary_score,
             "secondary_score": attempt.secondary_score,
             "finish_reason": attempt.finish_reason,
@@ -617,9 +610,7 @@ def save_answers_to_attempt(
 ) -> None:
     variant_tasks = {
         task.id: task
-        for task in db.query(Task)
-        .filter(Task.variant_id == attempt.variant_id)
-        .all()
+        for task in db.query(Task).filter(Task.variant_id == attempt.variant_id).all()
     }
 
     for answer in answers:
@@ -685,22 +676,13 @@ def get_secondary_score(db: Session, primary_score: int) -> Optional[int]:
 
 
 def grade_attempt(db: Session, attempt: Attempt) -> None:
-    tasks = (
-        db.query(Task)
-        .filter(Task.variant_id == attempt.variant_id)
-        .all()
-    )
+    tasks = db.query(Task).filter(Task.variant_id == attempt.variant_id).all()
 
     attempt_answers = (
-        db.query(AttemptAnswer)
-        .filter(AttemptAnswer.attempt_id == attempt.id)
-        .all()
+        db.query(AttemptAnswer).filter(AttemptAnswer.attempt_id == attempt.id).all()
     )
 
-    answers_by_field = {
-        answer.answer_field_id: answer
-        for answer in attempt_answers
-    }
+    answers_by_field = {answer.answer_field_id: answer for answer in attempt_answers}
 
     total_primary = 0
 
@@ -723,7 +705,9 @@ def grade_attempt(db: Session, attempt: Attempt) -> None:
             if field.input_type == "number":
                 expected = parse_decimal(field.expected_answer)
                 given = parse_decimal(raw_value)
-                is_correct = expected is not None and given is not None and expected == given
+                is_correct = (
+                    expected is not None and given is not None and expected == given
+                )
             else:
                 expected = normalize_answer(field.expected_answer)
                 is_correct = normalized == expected
@@ -796,6 +780,7 @@ def finish_attempt(
 # ---------------------------------------------------------------------------
 # Стартовые данные
 # ---------------------------------------------------------------------------
+
 
 def create_default_data(db: Session) -> None:
     if not db.query(ConversionTable).count():
@@ -922,6 +907,7 @@ def startup() -> None:
 # ---------------------------------------------------------------------------
 # Ученик: авторизация и попытка
 # ---------------------------------------------------------------------------
+
 
 @app.post("/api/student/login")
 def student_login(payload: StudentLoginIn, db: Session = Depends(get_db)):
@@ -1068,6 +1054,7 @@ def finish(
 # Преподаватель: авторизация
 # ---------------------------------------------------------------------------
 
+
 @app.post("/api/teacher/login")
 def teacher_login(payload: TeacherLoginIn, db: Session = Depends(get_db)):
     if payload.username != TEACHER_USERNAME or payload.password != TEACHER_PASSWORD:
@@ -1085,6 +1072,7 @@ def teacher_login(payload: TeacherLoginIn, db: Session = Depends(get_db)):
 # Преподаватель: управление вариантами и заданиями
 # ---------------------------------------------------------------------------
 
+
 @app.get("/api/teacher/variants")
 def list_variants(
     teacher: Token = Depends(require_teacher),
@@ -1097,7 +1085,9 @@ def list_variants(
             "id": variant.id,
             "title": variant.title,
             "is_active": variant.is_active,
-            "created_at": variant.created_at.isoformat() if variant.created_at else None,
+            "created_at": (
+                variant.created_at.isoformat() if variant.created_at else None
+            ),
         }
         for variant in variants
     ]
@@ -1183,16 +1173,13 @@ def create_answer_field(
 # Преподаватель: результаты
 # ---------------------------------------------------------------------------
 
+
 @app.get("/api/teacher/attempts")
 def teacher_attempts(
     teacher: Token = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
-    attempts = (
-        db.query(Attempt)
-        .order_by(Attempt.started_at.desc())
-        .all()
-    )
+    attempts = db.query(Attempt).order_by(Attempt.started_at.desc()).all()
 
     result = []
 
@@ -1208,8 +1195,12 @@ def teacher_attempts(
                 "class_name": cls.display_name if cls else "",
                 "variant_title": variant.title if variant else "",
                 "status": attempt.status,
-                "started_at": attempt.started_at.isoformat() if attempt.started_at else None,
-                "finished_at": attempt.finished_at.isoformat() if attempt.finished_at else None,
+                "started_at": (
+                    attempt.started_at.isoformat() if attempt.started_at else None
+                ),
+                "finished_at": (
+                    attempt.finished_at.isoformat() if attempt.finished_at else None
+                ),
                 "duration_seconds": attempt.duration_seconds,
                 "primary_score": attempt.primary_score,
                 "secondary_score": attempt.secondary_score,
@@ -1243,15 +1234,10 @@ def teacher_attempt_detail(
     )
 
     answers = (
-        db.query(AttemptAnswer)
-        .filter(AttemptAnswer.attempt_id == attempt.id)
-        .all()
+        db.query(AttemptAnswer).filter(AttemptAnswer.attempt_id == attempt.id).all()
     )
 
-    answers_by_field = {
-        answer.answer_field_id: answer
-        for answer in answers
-    }
+    answers_by_field = {answer.answer_field_id: answer for answer in answers}
 
     task_data = []
 
@@ -1310,8 +1296,12 @@ def teacher_attempt_detail(
         "attempt": {
             "id": attempt.id,
             "status": attempt.status,
-            "started_at": attempt.started_at.isoformat() if attempt.started_at else None,
-            "finished_at": attempt.finished_at.isoformat() if attempt.finished_at else None,
+            "started_at": (
+                attempt.started_at.isoformat() if attempt.started_at else None
+            ),
+            "finished_at": (
+                attempt.finished_at.isoformat() if attempt.finished_at else None
+            ),
             "duration_seconds": attempt.duration_seconds,
             "primary_score": attempt.primary_score,
             "secondary_score": attempt.secondary_score,
