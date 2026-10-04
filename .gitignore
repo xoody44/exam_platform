@@ -1,7 +1,9 @@
 venv/
 .venv/
+.env
 env/
 ENV/
+storage/
 
 __pycache__/
 *.py[cod]
@@ -12,4 +14,4 @@ __pycache__/
 .vscode/
 
 .DS_Store
-Thumbs.db
+*.db
