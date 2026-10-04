@@ -18,7 +18,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
 
-# enum подобные строки
 
 SCORING_ALL_OR_NOTHING = "all_or_nothing"
 SCORING_PARTIAL_SUM = "partial_sum"
@@ -190,13 +189,14 @@ class Attempt(Base):
     duration_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     primary_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    secondary_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    test_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     max_primary_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     conversion_table_id: Mapped[int | None] = mapped_column(
         ForeignKey("conversion_tables.id"), nullable=True
     )
 
     finish_reason: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     student: Mapped["Student"] = relationship(back_populates="attempts")
     variant: Mapped["Variant"] = relationship()
@@ -259,7 +259,7 @@ class ConversionEntry(Base):
         ForeignKey("conversion_tables.id"), nullable=False
     )
     primary_score: Mapped[int] = mapped_column(Integer, nullable=False)
-    secondary_score: Mapped[int] = mapped_column(Integer, nullable=False)
+    test_score: Mapped[int] = mapped_column(Integer, nullable=False)
 
     table: Mapped["ConversionTable"] = relationship(back_populates="entries")
 

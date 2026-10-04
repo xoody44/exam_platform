@@ -114,12 +114,12 @@ def seed_demo(db: Session) -> None:
     db.add(table)
     db.flush()
 
-    for primary, secondary in DEMO_CONVERSION.items():
+    for primary, test in DEMO_CONVERSION.items():
         db.add(
             ConversionEntry(
                 conversion_table_id=table.id,
                 primary_score=primary,
-                secondary_score=secondary,
+                test_score=test,
             )
         )
 

@@ -10,7 +10,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from .config import get_settings
 from .core.netinfo import server_url_for_clients
 from .database import Base, SessionLocal, engine
-from .routers import auth, public, student
+from .routers import admin, auth, files, public, student, admin, admin_results
 from .services.auth import ensure_default_admin
 from .services.seed import seed_schools
 from .services.settings import seed_settings
@@ -33,6 +33,7 @@ async def lifespan(app: FastAPI):
     logger = logging.getLogger("exam.main")
 
     from .database import Base, engine
+
     Base.metadata.create_all(bind=engine)
 
     db = SessionLocal()
@@ -47,7 +48,9 @@ async def lifespan(app: FastAPI):
     url = server_url_for_clients(settings.server_port)
 
     logger.info("=== Конфигурация сервера ===")
-    logger.info("secret_key: %s...%s", settings.secret_key[:8], settings.secret_key[-4:])
+    logger.info(
+        "secret_key: %s...%s", settings.secret_key[:8], settings.secret_key[-4:]
+    )
     logger.info("database_url: %s", settings.database_url)
     logger.info("================================")
     logger.info("Сервер экзамена запущен")
@@ -76,6 +79,9 @@ def create_app() -> FastAPI:
     app.include_router(public.router)
     app.include_router(auth.router)
     app.include_router(student.router)
+    app.include_router(admin.router)
+    app.include_router(files.router)
+    app.include_router(admin_results.router)
 
     @app.get("/api/health", tags=["service"])
     def health():

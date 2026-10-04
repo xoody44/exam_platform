@@ -13,7 +13,7 @@ class AdminLogIn(BaseModel):
 
 class AdminInfoOut(BaseModel):
     id: int
-    username: int
+    username: str
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -157,8 +157,8 @@ class TaskResultOut(BaseModel):
 class ScoresOut(BaseModel):
     primary_score: int | None
     max_primary_score: int
-    secondary_score: int | None
-    max_secondary_score: int | None
+    test_score: int | None
+    max_test_score: int | None
     conversion_table_id: int | None
 
 
@@ -260,7 +260,7 @@ class AdminTaskOut(BaseModel):
 
 class ConversionEntryIn(BaseModel):
     primary_score: int = Field(ge=0)
-    secondary_score: int = Field(ge=0, le=100)
+    test_score: int = Field(ge=0, le=100)
 
 
 class ConversionTableCreateIn(BaseModel):
@@ -273,7 +273,7 @@ class ConversionTableCreateIn(BaseModel):
 class ConversionEntryOut(BaseModel):
     id: int
     primary_score: int
-    secondary_score: int
+    test_score: int
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -310,7 +310,7 @@ class AttemptListItemOut(BaseModel):
     finished_at: datetime | None
     duration_seconds: int | None
     primary_score: int | None
-    secondary_score: int | None
+    test_score: int | None
     machine_id: str | None
 
 
@@ -353,11 +353,11 @@ class ClearResultsIn(BaseModel):
 class StatsOverviewOut(BaseModel):
     attempts_count: int
     avg_primary: float | None
-    avg_secondary: float | None
+    avg_test: float | None
     min_primary: int | None
-    min_secondary: int | None
+    min_test: int | None
     max_primary: int | None
-    max_secondary: int | None
+    max_test: int | None
 
 
 class StatsTaskOut(BaseModel):
@@ -379,3 +379,62 @@ class DashboardOut(BaseModel):
     attempts_finished: int
     attempts_aborted: int
     variants_active: int
+
+
+class VariantDetailOut(VariantOut):
+    tasks: list[AdminTaskOut] = []
+
+
+class ConversionTablePatchIn(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    year: int | None = None
+    max_primary: int | None = Field(default=None, ge=1, le=100)
+    is_active: bool | None = None
+    entries: list[ConversionEntryIn] | None = None
+
+
+class PaginatedParams(BaseModel):
+    page: int = Field(default=1, ge=1)
+    per_page: int = Field(default=50, ge=1, le=200)
+
+class PaginatedOut(BaseModel):
+    page: int
+    per_page: int
+    total: int
+    pages: int
+
+
+class AttemptFilters(BaseModel):
+    student_id: int | None = None
+    school_id: int | None = None
+    variant_id: int | None = None
+    status: str | None = None
+    min_primary: int | None = None
+    max_primary: int | None = None
+    min_test: int | None = None
+    max_test: int | None = None
+    search: str | None = None
+
+
+class AttemptsListOut(BaseModel):
+    items: list[AttemptListItemOut]
+    pagination: PaginatedOut
+
+
+class StudentWithAttemptsOut(BaseModel):
+    id: int
+    full_name: str
+    school_name: str
+    attempts_count: int
+    last_attempt_at: datetime | None
+    best_primary_score: int | None
+
+
+class StudentsListOut(BaseModel):
+    items: list[StudentWithAttemptsOut]
+    pagination: PaginatedOut
+
+
+class ClearResultsOut(BaseModel):
+    deleted_count: int
+    deleted_ids: list[int]

@@ -71,8 +71,8 @@ class TaskGrade:
 class GradeResult:
     primary_score: int
     max_primary_score: int
-    secondary_score: int | None
-    max_secondary_score: int | None
+    test_score: int | None
+    max_test_score: int | None
     conversion_table_id: int | None
     tasks: list[TaskGrade] = field(default_factory=list)
 
@@ -160,8 +160,8 @@ def grade_attempt(db: Session, attempt: Attempt) -> GradeResult:
         )
     table = get_active_conversion_table(db, max_primary)
 
-    secondary_score: int | None = None
-    max_secondary: int | None = None
+    test_score: int | None = None
+    max_test: int | None = None
     table_id: int | None = None
 
     if table is not None:
@@ -170,21 +170,21 @@ def grade_attempt(db: Session, attempt: Attempt) -> GradeResult:
             (e for e in table.entries if e.primary_score == total_primary),
             None,
         )
-        secondary_score = entry.secondary_score if entry else None
-        max_secondary = max(
-            (e.secondary_score for e in table.entries),
+        test_score = entry.test_score if entry else None
+        max_test = max(
+            (e.test_score for e in table.entries),
             default=None,
         )
     attempt.primary_score = total_primary
     attempt.max_primary_score = max_primary
-    attempt.secondary_score = secondary_score
+    attempt.test_score = test_score
     attempt.conversion_table_id = table_id
 
     return GradeResult(
         primary_score=total_primary,
         max_primary_score=max_primary,
-        secondary_score=secondary_score,
-        max_secondary_score=max_secondary,
+        test_score=test_score,
+        max_test_score=max_test,
         conversion_table_id=table_id,
         tasks=task_grades,
     )

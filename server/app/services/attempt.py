@@ -238,20 +238,20 @@ def build_result(db: Session, attempt: Attempt) -> AttemptResultOut:
             )
         )
 
-    max_secondary: int | None = None
+    max_test: int | None = None
     if attempt.conversion_table_id is not None:
         table = db.get(ConversionTable, attempt.conversion_table_id)
         if table is not None:
-            max_secondary = max(
-                (e.secondary_score for e in table.entries),
+            max_test = max(
+                (e.test_score for e in table.entries),
                 default=None,
             )
 
     scores = ScoresOut(
         primary_score=attempt.primary_score if graded else None,
         max_primary_score=max_primary,
-        secondary_score=attempt.secondary_score if graded else None,
-        max_secondary_score=max_secondary if graded else None,
+        test_score=attempt.test_score if graded else None,
+        max_test_score=max_test if graded else None,
         conversion_table_id=attempt.conversion_table_id if graded else None,
     )
 
@@ -404,7 +404,7 @@ def finish_attempt(
         ),
         payload={
             "primary_score": attempt.primary_score,
-            "secondary_score": attempt.secondary_score,
+            "test_score": attempt.test_score,
         },
     )
 
