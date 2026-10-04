@@ -1,10 +1,12 @@
 import logging
 import sys
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import SQLAlchemyError
 
 from .config import get_settings
@@ -27,6 +29,7 @@ logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
 logger = logging.getLogger("exam.server")
 
+WEB_DIST = Path(__file__).resolve().parent.parent / "web" / "dist"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -82,6 +85,22 @@ def create_app() -> FastAPI:
     app.include_router(admin.router)
     app.include_router(files.router)
     app.include_router(admin_results.router)
+
+    if WEB_DIST.exists():
+        app.mount(
+            "/assets",
+            StaticFiles(directory=WEB_DIST / "assets"),
+            name="spa-assets",
+        )
+
+        @app.get("/{full_path:path}", include_in_schema=False)
+        def spa(full_path: str):
+            candidate = WEB_DIST / full_path
+            if full_path and candidate.is_file():
+                return FileResponse(candidate)
+            return FileResponse(WEB_DIST / "index.html")
+    else:
+        logger.info("web/dist не найден: SPA не подключена")
 
     @app.get("/api/health", tags=["service"])
     def health():

@@ -169,6 +169,21 @@ def archive_variant(db: Session, user: User, variant_id: int) -> VariantOut:
     return _variant_out(db, variant)
 
 
+def unarchive_variant(db: Session, user: User, variant_id: int) -> VariantOut:
+    variant = _variant_or_404(db, variant_id)
+
+    if variant.archived_at is None:
+        raise conflict("вариант не находится в архиве")
+
+    variant.archived_at = None
+    variant.is_active = False
+
+    db.commit()
+    db.refresh(variant)
+    log_action(db, user.id, "unarchive_variant", "variant", variant.id, {"title": variant.title})
+    return _variant_out(db, variant)
+
+
 def list_tasks(db: Session, variant_id: int) -> list[AdminTaskOut]:
     _variant_or_404(db, variant_id)
     tasks = (
@@ -326,6 +341,12 @@ def delete_field(db: Session, user: User, field_id: int) -> int:
 
 def upload_file(db: Session, user: User, task_id: int, upload: UploadFile) -> TaskFileOut:
     task = _task_or_404(db, task_id)
+
+    if variant_has_finished_attempts(db, task.variant_id):
+        raise conflict(
+            "задание использовано в завершённых попытках: добавлять файлы нельзя "
+            "доступны только архивирование и деактивация"
+        )
 
     original_name = upload.filename or "file"
     ext = original_name.rsplit(".", 1)[-1].lower() if "." in original_name else ""

@@ -76,7 +76,7 @@ def list_students(
     return ar.list_students(db, search, school_id, page, per_page)
 
 
-@router.get("/students/{student_id}/attempts")
+@router.get("/students/{student_id}/attempts", response_model=AttemptsListOut)
 def get_student_attempts(
     student_id: int,
     page: int = Query(default=1, ge=1),
@@ -84,8 +84,7 @@ def get_student_attempts(
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    filters = AttemptFilters()
-    filters.student_id = student_id
+    filters = AttemptFilters(student_id=student_id)
     return ar.list_attempts(db, filters, page, per_page, "started_at", "desc")
 
 

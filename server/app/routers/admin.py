@@ -70,6 +70,14 @@ def archive_variant(
     return ac.archive_variant(db, admin, variant_id)
 
 
+@router.post("/variants/{variant_id}/unarchive", response_model=VariantOut)
+def unarchive_variant(
+    variant_id: int,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    return ac.unarchive_variant(db, admin, variant_id)
+
 
 @router.get("/variants/{variant_id}/tasks", response_model=list[AdminTaskOut])
 def list_tasks(

@@ -86,10 +86,17 @@ def list_attempts(
 ) -> AttemptsListOut:
     query = (
         db.query(Attempt)
+        .join(Student, Attempt.student_id == Student.id)
         .options(selectinload(Attempt.student).selectinload(Student.school))
         .options(selectinload(Attempt.variant))
         .filter(Attempt.deleted_at.is_(None))
     )
+
+    if filters.student_id is not None:
+        query = query.filter(Attempt.student_id == filters.student_id)
+
+    if filters.school_id is not None:
+        query = query.filter(Student.school_id == filters.school_id)
 
     if filters.school_id is not None:
         query = query.filter(Student.school_id == filters.school_id)

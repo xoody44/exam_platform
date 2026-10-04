@@ -15,3 +15,5 @@ __pycache__/
 
 .DS_Store
 *.db
+web/node_modules/
+web/dist/
