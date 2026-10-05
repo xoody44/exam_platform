@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "exam-student"
+version = "0.1.0"
+description = "Клиент ученика для экзаменационной системы"
+authors = ["xoody44 <melnikov2007@list.ru>"]
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.14"
+PyQt6 = "^6.7"
+requests = "^2.32"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -6,6 +6,7 @@
     "types": ["vite/client"],
     "allowArbitraryExtensions": true,
     "skipLibCheck": true,
+    "jsx": "preserve",
 
     /* Bundler mode */
     "moduleResolution": "bundler",
