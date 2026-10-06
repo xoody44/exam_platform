@@ -14,10 +14,12 @@ _ph = PasswordHasher()
 
 
 def hash_password(password: str) -> str:
+    """хэширует пароль алгоритмом Argon2"""
     return _ph.hash(password)
 
 
 def verify_password(plain: str, hashed: str) -> bool:
+    """проверяет пароль по хэшу, возвращает False при несовпадении"""
     try:
         return _ph.verify(hashed, plain)
     except (VerificationError, VerifyMismatchError):
@@ -25,9 +27,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 def create_access_token(subject: str, role: str, **extra: object) -> str:
-    import logging
-    logger = logging.getLogger("exam.security")
-
+    """создаёт JWT-токен доступа с ролью и дополнительными claims"""
     s = get_settings()
     now = datetime.now(timezone.utc)
     payload = {
@@ -44,6 +44,7 @@ def create_access_token(subject: str, role: str, **extra: object) -> str:
 
 
 def decode_access_token(token: str) -> dict | None:
+    """расшифровывает токен, возвращает None если он недействителен или истёк"""
     s = get_settings()
     try:
         return jwt.decode(token, s.secret_key, algorithms=[ALGORITH])

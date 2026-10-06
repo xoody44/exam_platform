@@ -14,6 +14,7 @@ def log_action(
     entity_id: int | None = None,
     payload: dict[str, Any] | None = None,
 ) -> None:
+    """пишет действие пользователя в журнал аудита ActionLog"""
     db.add(
         ActionLog(
             user_id=user_id,

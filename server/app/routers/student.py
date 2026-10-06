@@ -25,6 +25,7 @@ router = APIRouter(prefix="/api/student", tags=["student"])
 
 @router.post("/login", response_model=StudentLoginOut)
 def login(payload: StudentLoginIn, db: Session = Depends(get_db)):
+    """вход ученика по ФИО и школе"""
     return student_login(db, payload)
 
 
@@ -34,6 +35,7 @@ def start_attempt(
     student: Student = Depends(require_student),
     db: Session = Depends(get_db),
 ):
+    """начать попытку: выбирает вариант и создаёт Attempt"""
     logger.info("POST /api/student/attempts/start вызван student=%s machine=%s",
                 student.id, payload.machine_id)
     return attempt_service.start_attempt(db, student, payload.machine_id)
@@ -45,6 +47,7 @@ def get_attempt_state(
     student: Student = Depends(require_student),
     db: Session = Depends(get_db),
 ):
+    """текущее состояние попытки для восстановления экрана после перезапуска"""
     attempt = attempt_service.get_attempt_for_student(db, attempt_id, student)
     return attempt_service.build_state(db, attempt)
 
@@ -56,6 +59,7 @@ def save_answers(
     student: Student = Depends(require_student),
     db: Session = Depends(get_db),
 ):
+    """автосохранение ответов ученика"""
     attempt = attempt_service.get_attempt_for_student(db, attempt_id, student)
     saved = attempt_service.save_answers(db, attempt, payload.answers)
     return {"saved": saved}
@@ -68,6 +72,7 @@ def send_events(
     student: Student = Depends(require_student),
     db: Session = Depends(get_db),
 ):
+    """приём событий телеметрии с клиента ученика"""
     attempt = attempt_service.get_attempt_for_student(db, attempt_id, student)
     received = attempt_service.send_events(db, attempt, student, payload.events)
     return {"received": received}
@@ -80,6 +85,7 @@ def finish_attempt(
     student: Student = Depends(require_student),
     db: Session = Depends(get_db),
 ):
+    """завершение попытки с подсчётом баллов"""
     attempt = attempt_service.get_attempt_for_student(db, attempt_id, student)
     return attempt_service.finish_attempt(db, attempt, payload.reason, payload.answers)
 
@@ -90,5 +96,6 @@ def get_attempt_result(
     student: Student = Depends(require_student),
     db: Session = Depends(get_db),
 ):
+    """результаты завершённой попытки для экрана итогов"""
     attempt = attempt_service.get_attempt_for_student(db, attempt_id, student)
     return attempt_service.build_result(db, attempt)

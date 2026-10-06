@@ -28,6 +28,7 @@ DEFAULT_SCHOOLS: list[str] = [
 
 
 def seed_schools(db: Session) -> None:
+    """добавляет отсутствующие школы из списка DEFAULT_SCHOOLS"""
     existing = {row.name for row in db.query(School).all()}
     added = 0
     for name in DEFAULT_SCHOOLS:

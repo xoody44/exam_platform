@@ -47,24 +47,28 @@ ALLOWED_EXTENSIONS = {
 PARTIAL_SUM_ALLOWED_NUMBERS = {26, 27}
 
 def _variant_or_404(db: Session, variant_id: int) -> Variant:
+    """возвращает вариант или ошибку 404"""
     variant = db.get(Variant, variant_id)
     if variant is None:
         raise not_found("Вариант не найден")
     return variant
 
 def _task_or_404(db: Session, task_id: int) -> Task:
+    """возвращает задание или ошибку 404"""
     task = db.get(Task, task_id)
     if task is None:
         raise not_found("Задание не найдено")
     return task
 
 def _field_or_404(db: Session, field_id: int) -> AnswerField:
+    """возвращает поле ответа или ошибку 404"""
     field = db.get(AnswerField, field_id)
     if field is None:
         raise not_found("Поле ответа не найдено")
     return field
 
 def variant_has_finished_attempts(db: Session, variant_id: int) -> bool:
+    """есть ли у варианта завершённые попытки (контент такого варианта защищён от правок)"""
     return (
         db.query(Attempt.id)
         .filter(
@@ -76,10 +80,12 @@ def variant_has_finished_attempts(db: Session, variant_id: int) -> bool:
     )
 
 def _check_partial_sum_rules(number: int, scoring_type: str) -> None:
+    """разрешает частичный балл только для заданий 26 и 27"""
     if scoring_type == SCORING_PARTIAL_SUM and number not in PARTIAL_SUM_ALLOWED_NUMBERS:
         raise bad_request("частичный балл разрешён только для заданий 26 и 27")
 
 def _load_task(db: Session, task_id: int) -> Task:
+    """загружает задание вместе с полями и файлами"""
     return (
         db.query(Task)
         .options(selectinload(Task.fields), selectinload(Task.files))
@@ -89,6 +95,7 @@ def _load_task(db: Session, task_id: int) -> Task:
 
 
 def _variant_out(db: Session, variant: Variant) -> VariantOut:
+    """собирает VariantOut со счётчиками заданий и попыток"""
     return VariantOut(
         id=variant.id,
         title=variant.title,
@@ -107,11 +114,13 @@ def _variant_out(db: Session, variant: Variant) -> VariantOut:
 
 
 def list_variants(db: Session) -> list[VariantOut]:
+    """все варианты в порядке убывания id"""
     variants = db.query(Variant).order_by(Variant.id.desc()).all()
     return [_variant_out(db, v) for v in variants]
 
 
 def create_variant(db: Session, user: User, payload: VariantCreateIn) -> VariantOut:
+    """создаёт новый активный вариант"""
     variant = Variant(title=payload.title, is_active=True)
     db.add(variant)
     db.commit()
@@ -121,6 +130,7 @@ def create_variant(db: Session, user: User, payload: VariantCreateIn) -> Variant
 
 
 def get_variant(db: Session, variant_id: int) -> VariantDetailOut:
+    """вариант детально, со списком всех заданий"""
     variant = _variant_or_404(db, variant_id)
     tasks = (
         db.query(Task)
@@ -139,6 +149,7 @@ def get_variant(db: Session, variant_id: int) -> VariantDetailOut:
 def patch_variant(
     db: Session, user: User, variant_id: int, payload: VariantPatchIn,
 ) -> VariantOut:
+    """обновляет заголовок и активность варианта; переименование использованного варианта запрещено"""
     variant = _variant_or_404(db, variant_id)
     used = variant_has_finished_attempts(db, variant.id)
 
@@ -160,6 +171,7 @@ def patch_variant(
 
 
 def archive_variant(db: Session, user: User, variant_id: int) -> VariantOut:
+    """архивирует вариант и деактивирует его"""
     variant = _variant_or_404(db, variant_id)
     variant.archived_at = utcnow()
     variant.is_active = False
@@ -170,6 +182,7 @@ def archive_variant(db: Session, user: User, variant_id: int) -> VariantOut:
 
 
 def unarchive_variant(db: Session, user: User, variant_id: int) -> VariantOut:
+    """возвращает вариант из архива неактивным"""
     variant = _variant_or_404(db, variant_id)
 
     if variant.archived_at is None:
@@ -185,6 +198,7 @@ def unarchive_variant(db: Session, user: User, variant_id: int) -> VariantOut:
 
 
 def list_tasks(db: Session, variant_id: int) -> list[AdminTaskOut]:
+    """задания варианта по номерам, включая архивные"""
     _variant_or_404(db, variant_id)
     tasks = (
         db.query(Task)
@@ -197,6 +211,7 @@ def list_tasks(db: Session, variant_id: int) -> list[AdminTaskOut]:
 
 
 def create_task(db: Session, user: User, variant_id: int, payload: TaskCreateIn) -> AdminTaskOut:
+    """добавляет задание в вариант с проверкой дубля номера и правил балла"""
     variant = _variant_or_404(db, variant_id)
 
     if variant_has_finished_attempts(db, variant.id):
@@ -221,11 +236,13 @@ def create_task(db: Session, user: User, variant_id: int, payload: TaskCreateIn)
 
 
 def get_task(db: Session, task_id: int) -> AdminTaskOut:
+    """одно задание целиком"""
     _task_or_404(db, task_id)
     return AdminTaskOut.model_validate(_load_task(db, task_id))
 
 
 def patch_task(db: Session, user: User, task_id: int, payload: TaskPatchIn) -> AdminTaskOut:
+    """частичное обновление задания, недоступное для использованных вариантов"""
     task = _task_or_404(db, task_id)
 
     if variant_has_finished_attempts(db, task.variant_id):
@@ -263,6 +280,7 @@ def patch_task(db: Session, user: User, task_id: int, payload: TaskPatchIn) -> A
 
 
 def archive_task(db: Session, user: User, task_id: int) -> AdminTaskOut:
+    """помечает задание архивным без физического удаления"""
     task = _task_or_404(db, task_id)
     task.archived_at = utcnow()
     db.commit()
@@ -272,6 +290,7 @@ def archive_task(db: Session, user: User, task_id: int) -> AdminTaskOut:
 
 
 def create_field(db: Session, user: User, task_id: int, payload: FieldCreateIn) -> AdminFieldOut:
+    """добавляет поле ответа заданию с проверкой дубля кода"""
     task = _task_or_404(db, task_id)
 
     if variant_has_finished_attempts(db, task.variant_id):
@@ -294,6 +313,7 @@ def create_field(db: Session, user: User, task_id: int, payload: FieldCreateIn) 
 
 
 def patch_field(db: Session, user: User, field_id: int, payload: FieldPatchIn) -> AdminFieldOut:
+    """обновляет поле ответа, включая ожидаемый ответ и баллы"""
     field = _field_or_404(db, field_id)
     task = _task_or_404(db, field.task_id)
 
@@ -327,6 +347,7 @@ def patch_field(db: Session, user: User, field_id: int, payload: FieldPatchIn) -
 
 
 def delete_field(db: Session, user: User, field_id: int) -> int:
+    """удаляет поле ответа до начала использования варианта"""
     field = _field_or_404(db, field_id)
     task = _task_or_404(db, field.task_id)
 
@@ -340,6 +361,7 @@ def delete_field(db: Session, user: User, field_id: int) -> int:
 
 
 def upload_file(db: Session, user: User, task_id: int, upload: UploadFile) -> TaskFileOut:
+    """загружает файл к заданию с проверкой расширения и размера"""
     task = _task_or_404(db, task_id)
 
     if variant_has_finished_attempts(db, task.variant_id):
@@ -388,6 +410,7 @@ def upload_file(db: Session, user: User, task_id: int, upload: UploadFile) -> Ta
 
 
 def delete_file(db: Session, user: User, file_id: int) -> int:
+    """удаляет файл задания с диска и из базы"""
     row = db.get(TaskFile, file_id)
     if row is None:
         raise not_found("файл не найден")
@@ -407,16 +430,19 @@ def delete_file(db: Session, user: User, file_id: int) -> int:
 
 
 def get_settings_view(db: Session) -> SettingsOut:
+    """текущие настройки для админ-панели"""
     return get_settings_out(db)
 
 
 def update_settings(db: Session, user: User, payload: SettingsPatchIn) -> SettingsOut:
+    """обновляет настройки и пишет действие в аудит"""
     result = apply_settings_patch(db, payload)
     log_action(db, user.id, "update_settings", "settings", None, payload.model_dump(exclude_unset=True))
     return result
 
 
 def _table_or_404(db: Session, table_id: int) -> ConversionTable:
+    """возвращает переводную таблицу или ошибку 404"""
     table = db.get(ConversionTable, table_id)
     if table is None:
         raise not_found("Таблица перевода не найдена")
@@ -424,6 +450,7 @@ def _table_or_404(db: Session, table_id: int) -> ConversionTable:
 
 
 def _validate_entries(entries: list, max_primary: int) -> None:
+    """проверяет строки таблицы: диапазон первичных баллов и отсутствие дублей"""
     seen = set()
     for e in entries:
         if e.primary_score < 0 or e.primary_score > max_primary:
@@ -436,6 +463,7 @@ def _validate_entries(entries: list, max_primary: int) -> None:
 
 
 def list_conversion_tables(db: Session) -> list[ConversionTableOut]:
+    """все переводные таблицы от новых к старым"""
     tables = db.query(ConversionTable).order_by(ConversionTable.id.desc()).all()
     return [ConversionTableOut.model_validate(t) for t in tables]
 
@@ -443,6 +471,7 @@ def list_conversion_tables(db: Session) -> list[ConversionTableOut]:
 def create_conversion_table(
     db: Session, user: User, payload: ConversionTableCreateIn,
 ) -> ConversionTableOut:
+    """создаёт переводную таблицу со строками, новая таблица неактивна"""
     _validate_entries(payload.entries, payload.max_primary)
 
     table = ConversionTable(
@@ -470,12 +499,14 @@ def create_conversion_table(
 
 
 def get_conversion_table(db: Session, table_id: int) -> ConversionTableOut:
+    """переводная таблица вместе со всеми строками"""
     return ConversionTableOut.model_validate(_table_or_404(db, table_id))
 
 
 def patch_conversion_table(
     db: Session, user: User, table_id: int, payload: ConversionTablePatchIn,
 ) -> ConversionTableOut:
+    """обновляет таблицу; entries заменяет целиком, при уменьшении max_primary проверяет старые строки"""
     table = _table_or_404(db, table_id)
     data = payload.model_dump(exclude_unset=True)
 
@@ -522,6 +553,7 @@ def patch_conversion_table(
 
 
 def activate_conversion_table(db: Session, user: User, table_id: int) -> ConversionTableOut:
+    """делает таблицу активной, деактивируя остальные"""
     table = _table_or_404(db, table_id)
 
     db.query(ConversionTable).filter(ConversionTable.id != table.id).update(

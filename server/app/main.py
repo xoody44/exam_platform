@@ -15,7 +15,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from .config import get_settings
 from .core.netinfo import server_url_for_clients
 from .database import Base, SessionLocal, engine
-from .routers import admin, auth, files, public, student, admin, admin_results
+from .routers import admin, admin_results, auth, files, public, student
 from .services.auth import ensure_default_admin
 from .services.seed import seed_schools
 from .services.settings import seed_settings
@@ -42,20 +42,22 @@ logger.info("WEB_DIST path: %s, exists: %s", WEB_DIST, WEB_DIST.exists())
 
 
 def _open_browser_after_delay(url: str, delay: float = 1.5) -> None:
+    """открывает браузер с адресом сервера через задержку в фоновом потоке"""
+
     def _open():
         time.sleep(delay)
         try:
             webbrowser.open(url, new=2)
         except Exception:
             pass
+
     threading.Thread(target=_open, daemon=True).start()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """жизненный цикл приложения: инициализация БД, сиды и лог конфигурации"""
     logger = logging.getLogger("exam.main")
-
-    from .database import Base, engine
 
     Base.metadata.create_all(bind=engine)
 
@@ -88,6 +90,7 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
+    """создаёт и настраивает приложение FastAPI: middleware, роутеры и SPA"""
     app = FastAPI(
         title="Сервер экзаменационной системы",
         version="0.2.0",
@@ -111,6 +114,7 @@ def create_app() -> FastAPI:
 
     @app.get("/api/health", tags=["service"])
     def health():
+        """проверка живости сервера"""
         return {"status": "ok"}
 
 
@@ -123,6 +127,7 @@ def create_app() -> FastAPI:
     
         @app.get("/{full_path:path}", include_in_schema=False)
         def spa(full_path: str):
+            """раздача собранной админ-панели: файл по пути либо index.html"""
             candidate = WEB_DIST / full_path
             if full_path and candidate.is_file():
                 return FileResponse(candidate)
@@ -133,6 +138,7 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(SQLAlchemyError)
     async def sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError):
+        """превращает ошибки SQLAlchemy в понятный ответ 500"""
         logger.exception("Ошибка базы данных: %s", exc)
         return JSONResponse(
             status_code=500,

@@ -14,6 +14,8 @@ DB_PATH = APP_ROOT / "exam.db"
 
 
 class Settings(BaseSettings):
+    """настройки приложения из переменных окружения и значений по умолчанию"""
+
     model_config = SettingsConfigDict(
         env_file=".env", 
         env_file_encoding="utf-8", 
@@ -41,16 +43,19 @@ class Settings(BaseSettings):
 
     @property
     def is_sqlite(self) -> bool:
+        """признак того, что используется база SQLite"""
         return self.database_url.startswith("sqlite")
 
     @property
     def storage_dir(self) -> Path:
+        """каталог хранилища файлов, создаётся при первом обращении"""
         p = Path(self.storage_path)
         p.mkdir(parents=True, exist_ok=True)
         return p
 
     @property
     def task_files_dir(self) -> Path:
+        """каталог загруженных файлов заданий"""
         p = self.storage_dir / "task_files"
         p.mkdir(parents=True, exist_ok=True)
         return p
@@ -58,4 +63,5 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
+    """кэшированный экземпляр настроек приложения"""
     return Settings()

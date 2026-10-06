@@ -19,6 +19,7 @@ def download_file(
     payload: dict = Depends(get_token_payload),
     db: Session = Depends(get_db),
 ):
+    """скачивание файла задания по id для авторизованного клиента"""
     row = db.get(TaskFile, file_id)
     if row is None:
         raise not_found("Файл не найден")

@@ -22,6 +22,7 @@ DEFAULTS: dict[str, Any] = {
 
 
 def get_setting(db: Session, key: str, default: Any = None) -> Any:
+    """читает настройку из БД с fallback на DEFAULTS"""
     row = db.get(Setting, key)
     if row is None:
         return DEFAULTS.get(key, default)
@@ -32,6 +33,7 @@ def get_setting(db: Session, key: str, default: Any = None) -> Any:
 
 
 def set_setting(db: Session, key: str, value: Any) -> None:
+    """сохраняет значение настройки в БД в JSON-виде"""
     raw = json.dumps(value, ensure_ascii=False)
     row = db.get(Setting, key)
     if row is None:
@@ -42,6 +44,7 @@ def set_setting(db: Session, key: str, value: Any) -> None:
 
 
 def get_settings_out(db: Session) -> SettingsOut:
+    """собирает текущие настройки в схему ответа"""
     return SettingsOut(
         exam_duration_minutes=int(get_setting(db, "exam_duration_minutes")),
         instruction_text=str(get_setting(db, "instruction_text")),
@@ -50,6 +53,7 @@ def get_settings_out(db: Session) -> SettingsOut:
 
 
 def apply_settings_patch(db: Session, patch: SettingsPatchIn) -> SettingsOut:
+    """применяет только переданные поля настроек"""
     data = patch.model_dump(exclude_unset=True)
     for key, value in data.items():
         set_setting(db, key, value)
@@ -57,6 +61,7 @@ def apply_settings_patch(db: Session, patch: SettingsPatchIn) -> SettingsOut:
 
 
 def seed_settings(db: Session) -> None:
+    """заполняет отсутствующие настройки значениями по умолчанию"""
     for key, value in DEFAULTS.items():
         if db.get(Setting, key) is None:
             db.add(Setting(key=key, value=json.dumps(value, ensure_ascii=False)))

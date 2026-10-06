@@ -44,6 +44,7 @@ FINISHED_STATUSES = (STATUS_FINISHED, STATUS_TIME_EXPIRED)
 
 
 def _paginate(total: int, page: int, per_page: int) -> PaginatedOut:
+    """метаданные постраничной выдачи"""
     return PaginatedOut(
         page=page,
         per_page=per_page,
@@ -54,6 +55,7 @@ def _paginate(total: int, page: int, per_page: int) -> PaginatedOut:
 
 
 def get_dashboard(db: Session) -> DashboardOut:
+    """счётчики для главного экрана админ-панели"""
     students_count = db.query(Student).count()
 
     active_q = db.query(Attempt).filter(Attempt.deleted_at.is_(None))
@@ -84,6 +86,7 @@ def list_attempts(
     sort_by: str,
     sort_order: str,
 ) -> AttemptsListOut:
+    """список попыток с фильтрами, поиском по ФИО, сортировкой и пагинацией"""
     query = (
         db.query(Attempt)
         .join(Student, Attempt.student_id == Student.id)
@@ -166,6 +169,7 @@ def list_attempts(
 
 
 def get_attempt_detail(db: Session, attempt_id: int) -> AttemptDetailOut:
+    """детали попытки: ответы ученика рядом с ожидаемыми для ручной проверки"""
     attempt = (
         db.query(Attempt)
         .options(
@@ -270,6 +274,7 @@ def list_students(
     page: int,
     per_page: int,
 ) -> StudentsListOut:
+    """ученики со сводкой по попыткам: поиск по ФИО, фильтр по школе, пагинация"""
     query = (
         db.query(Student)
         .options(selectinload(Student.school))
@@ -328,6 +333,7 @@ def list_students(
 
 
 def get_stats(db: Session) -> StatsOut:
+    """статистика по завершённым попыткам: обзор баллов и разбивка по заданиям"""
     finished = (
         db.query(Attempt)
         .filter(
@@ -423,6 +429,7 @@ def clear_results(
     status: str | None = None,
     variant_id: int | None = None,
 ) -> ClearResultsOut:
+    """мягкое удаление попыток по режиму: одна, ученик, все или по фильтру"""
     now = utcnow()
     query = db.query(Attempt).filter(Attempt.deleted_at.is_(None))
 
