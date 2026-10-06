@@ -1,5 +1,8 @@
 import logging
 import sys
+import threading
+import time
+import webbrowser
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -29,7 +32,24 @@ logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
 logger = logging.getLogger("exam.server")
 
-WEB_DIST = Path(__file__).resolve().parent.parent / "web" / "dist"
+
+if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+    WEB_DIST = Path(sys._MEIPASS) / "web" / "dist"
+else:
+    WEB_DIST = Path(__file__).resolve().parent.parent.parent / "web" / "dist"
+
+logger.info("WEB_DIST path: %s, exists: %s", WEB_DIST, WEB_DIST.exists())
+
+
+def _open_browser_after_delay(url: str, delay: float = 1.5) -> None:
+    def _open():
+        time.sleep(delay)
+        try:
+            webbrowser.open(url, new=2)
+        except Exception:
+            pass
+    threading.Thread(target=_open, daemon=True).start()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -61,6 +81,9 @@ async def lifespan(app: FastAPI):
     logger.info("Swagger-документация: %s/docs", url)
     logger.info("================================")
 
+    if not settings.debug:
+        _open_browser_after_delay(f"http://127.0.0.1:{settings.server_port}/")
+
     yield
 
 
@@ -86,13 +109,18 @@ def create_app() -> FastAPI:
     app.include_router(files.router)
     app.include_router(admin_results.router)
 
+    @app.get("/api/health", tags=["service"])
+    def health():
+        return {"status": "ok"}
+
+
     if WEB_DIST.exists():
         app.mount(
             "/assets",
             StaticFiles(directory=WEB_DIST / "assets"),
             name="spa-assets",
         )
-
+    
         @app.get("/{full_path:path}", include_in_schema=False)
         def spa(full_path: str):
             candidate = WEB_DIST / full_path
@@ -101,10 +129,7 @@ def create_app() -> FastAPI:
             return FileResponse(WEB_DIST / "index.html")
     else:
         logger.info("web/dist не найден: SPA не подключена")
-
-    @app.get("/api/health", tags=["service"])
-    def health():
-        return {"status": "ok"}
+    
 
     @app.exception_handler(SQLAlchemyError)
     async def sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError):

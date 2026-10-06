@@ -51,6 +51,19 @@ class ExamApi:
             return response.json()
 
         raise ApiError("сервер недоступен.") from last_error
+
+    def health(self, timeout: float = 3.0) -> dict:
+        response = self._http.get(self.server_url + "/api/health", timeout=timeout)
+        if response.status_code != 200:
+            raise ApiError(f"сервер ответил кодом {response.status_code}", response.status_code)
+        try:
+            return response.json()
+        except ValueError:
+            raise ApiError(
+                "сервер вернул не-JSON (на этом порту работает не экзаменационный сервер "
+                f"или SPA перехватывает API): {response.text[:100]!r}"
+            )
+    
     def get_schools(self) -> list[dict]:
         return self._request("GET", "/api/public/schools")
 

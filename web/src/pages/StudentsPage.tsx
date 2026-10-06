@@ -28,8 +28,8 @@ function StudentAttempts({ studentId }: { studentId: number }) {
         { title: 'Вариант', dataIndex: 'variant_title' },
         { title: 'Статус', dataIndex: 'status' },
         { title: 'Начало', dataIndex: 'started_at', render: formatDateTime },
-        { title: 'Первичный', dataIndex: 'primary_score', render: (v: number | null) => v ?? '—' },
-        { title: 'Тестовый', dataIndex: 'test_score', render: (v: number | null) => v ?? '—' },
+        { title: 'Первичный', dataIndex: 'primary_score', render: (v: number | null) => v ?? '-' },
+        { title: 'Тестовый', dataIndex: 'test_score', render: (v: number | null) => v ?? '-' },
         { title: '', key: 'a', width: 90, render: (_v, r) => <Link to={`/attempts/${r.id}`}>открыть</Link> },
       ]}
     />
@@ -130,7 +130,7 @@ export default function StudentsPage() {
             title: 'Лучший первичный',
             dataIndex: 'best_primary_score',
             width: 150,
-            render: (v: number | null) => v ?? '—',
+            render: (v: number | null) => v ?? '-',
           },
         ]}
       />

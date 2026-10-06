@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
+from ..config import get_settings
+
 from ..database import get_db
 from ..dependencies import get_token_payload
 from ..exceptions import not_found
@@ -21,7 +23,7 @@ def download_file(
     if row is None:
         raise not_found("Файл не найден")
 
-    path = Path(row.file_path)
+    path = get_settings().task_files_dir / row.file_path
     if not path.exists():
         raise not_found("файл отсутствует на диске")
 

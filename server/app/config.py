@@ -4,6 +4,14 @@ from pathlib import Path
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from .core import get_app_root
+
+
+APP_ROOT = get_app_root()
+CONFIG_PATH = APP_ROOT / "config.json"
+STORAGE_DIR = APP_ROOT / "storage"
+DB_PATH = APP_ROOT / "exam.db"
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -12,7 +20,7 @@ class Settings(BaseSettings):
         extra="ignore"
     )
 
-    database_url: str = Field(default="sqlite:///./exam.db")
+    database_url: str = f"sqlite:///{DB_PATH}"
 
     server_host: str = "0.0.0.0"
     server_port: str = "8000"
@@ -26,7 +34,7 @@ class Settings(BaseSettings):
     default_admin_username: str = "admin"
     default_admin_password: str = "admin12345"
 
-    storage_path: str = "./storage"
+    storage_path: str = str(STORAGE_DIR)
     max_uploaded_size_mb: int = 50
 
     default_exam_duration_minutes: int = 235

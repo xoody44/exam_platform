@@ -23,7 +23,7 @@ const sortKeyMap: Record<string, string> = {
 }
 
 function formatDuration(seconds: number | null): string {
-  if (seconds == null) return '—'
+  if (seconds == null) return '-'
   const h = Math.floor(seconds / 3600)
   const m = Math.floor((seconds % 3600) / 60)
   const s = seconds % 60
@@ -31,7 +31,7 @@ function formatDuration(seconds: number | null): string {
 }
 
 function formatDateTime(iso: string | null): string {
-  if (!iso) return '—'
+  if (!iso) return '-'
   // Сервер хранит наивное UTC-время: добавляем Z, чтобы браузер корректно конвертировал в локальное.
   const withZone = /([+-]\d{2}:\d{2}|Z)$/.test(iso) ? iso : `${iso}Z`
   return new Date(withZone).toLocaleString('ru-RU')
@@ -71,7 +71,7 @@ export default function AttemptsPage() {
         setItems(data.items)
         setTotal(data.pagination.total)
       } catch {
-        // ошибка сети — показываем пустую таблицу, не роняем страницу
+        // ошибка сети - показываем пустую таблицу, не роняем страницу
       } finally {
         if (alive) setLoading(false)
       }
@@ -99,8 +99,8 @@ export default function AttemptsPage() {
     { title: 'Начало', dataIndex: 'started_at', sorter: true, render: formatDateTime },
     { title: 'Завершение', dataIndex: 'finished_at', sorter: true, render: formatDateTime },
     { title: 'Длительность', dataIndex: 'duration_seconds', sorter: true, render: formatDuration },
-    { title: 'Первичный', dataIndex: 'primary_score', sorter: true, render: (v: number | null) => v ?? '—' },
-    { title: 'Тестовый', dataIndex: 'test_score', sorter: true, render: (v: number | null) => v ?? '—' },
+    { title: 'Первичный', dataIndex: 'primary_score', sorter: true, render: (v: number | null) => v ?? '-' },
+    { title: 'Тестовый', dataIndex: 'test_score', sorter: true, render: (v: number | null) => v ?? '-' },
     {
       title: '',
       key: 'action',

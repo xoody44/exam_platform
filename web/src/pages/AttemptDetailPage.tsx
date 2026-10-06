@@ -42,7 +42,7 @@ export default function AttemptDetailPage() {
           <Descriptions.Item label="Начало">{formatDateTime(data.attempt.started_at)}</Descriptions.Item>
           <Descriptions.Item label="Завершение">{formatDateTime(data.attempt.finished_at)}</Descriptions.Item>
           <Descriptions.Item label="Длительность">{formatDuration(data.attempt.duration_seconds)}</Descriptions.Item>
-          <Descriptions.Item label="Компьютер">{data.attempt.machine_id ?? '—'}</Descriptions.Item>
+          <Descriptions.Item label="Компьютер">{data.attempt.machine_id ?? '-'}</Descriptions.Item>
           <Descriptions.Item label="Таблица перевода" span={2}>
             {data.conversion_table_name ?? 'не использована'}
           </Descriptions.Item>
@@ -52,14 +52,14 @@ export default function AttemptDetailPage() {
           <Col span={6}>
             <Statistic
               title="Первичный балл"
-              value={data.scores.primary_score ?? '—'}
+              value={data.scores.primary_score ?? '-'}
               suffix={`/ ${data.scores.max_primary_score}`}
             />
           </Col>
           <Col span={6}>
             <Statistic
               title="Тестовый балл"
-              value={data.scores.test_score ?? '—'}
+              value={data.scores.test_score ?? '-'}
               suffix={data.scores.max_test_score != null ? `/ ${data.scores.max_test_score}` : undefined}
             />
           </Col>
@@ -89,7 +89,7 @@ export default function AttemptDetailPage() {
                 title: 'Ответ ученика',
                 dataIndex: 'student_answer',
                 render: (v: string) =>
-                  v === '' ? <Typography.Text type="secondary">— нет ответа —</Typography.Text> : v,
+                  v === '' ? <Typography.Text type="secondary">- нет ответа -</Typography.Text> : v,
               },
               { title: 'Правильный ответ', dataIndex: 'expected_answer' },
               {

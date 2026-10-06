@@ -13,7 +13,7 @@ export default function StatsPage() {
   if (!stats) return <Card><Typography.Text>Загрузка…</Typography.Text></Card>
 
   const o = stats.overview
-  const fmt = (v: number | null) => (v == null ? '—' : v.toFixed(1))
+  const fmt = (v: number | null) => (v == null ? '-' : v.toFixed(1))
 
   return (
     <>
@@ -25,14 +25,14 @@ export default function StatsPage() {
           <Col span={5}>
             <Statistic
               title="Первичный мин / макс"
-              value={o.min_primary ?? '—'}
+              value={o.min_primary ?? '-'}
               suffix={o.max_primary != null ? `/ ${o.max_primary}` : undefined}
             />
           </Col>
           <Col span={5}>
             <Statistic
               title="Тестовый мин / макс"
-              value={o.min_test ?? '—'}
+              value={o.min_test ?? '-'}
               suffix={o.max_test != null ? `/ ${o.max_test}` : undefined}
             />
           </Col>

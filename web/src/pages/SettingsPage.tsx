@@ -60,7 +60,7 @@ export default function SettingsPage() {
           name="instruction_text"
           label={
             <Typography.Text>
-              Инструкция для страницы 0 — показывается всем ученикам
+              Инструкция для страницы 0 - показывается всем ученикам
             </Typography.Text>
           }
         >

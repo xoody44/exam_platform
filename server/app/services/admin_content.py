@@ -371,7 +371,7 @@ def upload_file(db: Session, user: User, task_id: int, upload: UploadFile) -> Ta
 
     row = TaskFile(
         task_id=task.id,
-        file_path=str(dest),
+        file_path=stored_name,
         original_name=original_name,
         mime_type=upload.content_type,
         size_bytes=len(data),
@@ -396,7 +396,7 @@ def delete_file(db: Session, user: User, file_id: int) -> int:
     if variant_has_finished_attempts(db, task.variant_id):
         raise conflict("задание использовано в завершённых попытках: удалять файлы нельзя")
 
-    path = Path(row.file_path)
+    path = get_settings().task_files_dir / row.file_path
     if path.exists():
         path.unlink(missing_ok=True)
 

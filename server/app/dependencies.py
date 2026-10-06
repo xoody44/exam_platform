@@ -68,7 +68,6 @@ def require_student(
     logger.info("require_student: db.get result = %s", student)
 
     if student is None:
-        # Диагностика: проверим, есть ли вообще такой студент в базе
         all_students = db.query(Student).all()
         logger.error(
             "Ученик не найден! uid=%s. Всего учеников в базе: %d. IDs: %s",
