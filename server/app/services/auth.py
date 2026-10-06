@@ -23,6 +23,7 @@ from .audit import log_action
 
 
 def ensure_default_admin(db: Session) -> None:
+    """создаёт администратора по умолчанию, если пользователей ещё нет"""
     if db.query(User).count() > 0:
         return
 
@@ -37,6 +38,7 @@ def ensure_default_admin(db: Session) -> None:
 
 
 def admin_login(db: Session, username: str, password: str) -> AdminLoginOut:
+    """проверяет учётные данные и возвращает токен администратора"""
     user = db.query(User).filter(User.username == username).first()
 
     if user is None or not verify_password(password, user.password_hash):
@@ -68,6 +70,7 @@ def get_or_create_student(
     school: School,
     payload: StudentLoginIn,
 ) -> Student:
+    """находит ученика по ФИО и школе или создаёт нового"""
     parts = [payload.last_name, payload.first_name]
     if payload.middle_name:
         parts.append(payload.middle_name)
@@ -105,6 +108,7 @@ def get_or_create_student(
 
 
 def student_login(db: Session, payload: StudentLoginIn) -> StudentLoginOut:
+    """вход ученика без пароля: находит школу, создаёт ученика и выдаёт токен"""
     school = db.get(School, payload.school_id)
     if school is None:
         raise not_found("Школа не найдена")

@@ -10,4 +10,5 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 @router.post("/login", response_model=AdminLoginOut)
 def login(payload: AdminLogIn, db: Session = Depends(get_db)):
+    """вход администратора, возвращает токен и данные пользователя"""
     return admin_login(db, payload.username, payload.password)

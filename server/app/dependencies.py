@@ -16,6 +16,7 @@ bearer_scheme = HTTPBearer(auto_error=False)
 def get_token_payload(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
 ) -> dict:
+    """извлекает и проверяет JWT из заголовка Authorization"""
     if credentials is None or not credentials.credentials:
         logger.warning("отсутствует заголовок Authorization")
         raise unauthorized("отсутствует заголовок Authorization")
@@ -42,6 +43,7 @@ def require_admin(
     payload: dict = Depends(get_token_payload),
     db: Session = Depends(get_db),
 ) -> User:
+    """зависимость: допускает только активных администраторов"""
     if payload.get("role") != ROLE_ADMIN:
         raise forbidden("требуются права администратора")
 
@@ -57,6 +59,7 @@ def require_student(
     payload: dict = Depends(get_token_payload),
     db: Session = Depends(get_db),
 ) -> Student:
+    """зависимость: допускает только учеников, существующих в базе"""
     if payload.get("role") != ROLE_STUDENT:
         raise forbidden("Эндпоинт доступен только ученику")
 

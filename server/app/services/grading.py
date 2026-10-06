@@ -14,10 +14,12 @@ from .conversion import get_active_conversion_table
 
 
 def normalize_string(raw: str) -> str:
+    """убирает все пробелы для сравнения строковых ответов"""
     return "".join((raw or "").split())
 
 
 def parse_decimal(raw: str) -> Decimal:
+    """парсит числовой ответ, возвращает None при ошибке или пусто"""
     text = "".join((raw or "").split())
     if not text:
         return None
@@ -28,6 +30,7 @@ def parse_decimal(raw: str) -> Decimal:
 
 
 def check_field_is_correct(field: AnswerField, raw: str) -> bool:
+    """сверяет ответ ученика с ожидаемым с учётом типа поля"""
     if field.input_type == "number":
         expected = parse_decimal(field.expected_answer)
         given = parse_decimal(raw)
@@ -40,6 +43,7 @@ def compute_task_score(
     max_score: int,
     parts: list[tuple[int, bool]],
 ) -> int:
+    """балл задания: сумма за верные части либо весь балл при all_or_nothing"""
     if not parts:
         return 0
 
@@ -51,6 +55,7 @@ def compute_task_score(
 
 @dataclass
 class FieldGrade:
+    """оценка одного поля ответа"""
     field_id: int
     raw_value: str
     normalized_value: str
@@ -60,6 +65,7 @@ class FieldGrade:
 
 @dataclass
 class TaskGrade:
+    """оценка задания вместе с полями"""
     task_id: int
     number: int
     score: int
@@ -69,6 +75,7 @@ class TaskGrade:
 
 @dataclass
 class GradeResult:
+    """итог автопроверки попытки: баллы и разбивка по заданиям"""
     primary_score: int
     max_primary_score: int
     test_score: int | None
@@ -78,6 +85,7 @@ class GradeResult:
 
 
 def grade_attempt(db: Session, attempt: Attempt) -> GradeResult:
+    """автопроверяет попытку, сохраняет оценки в БД и переводит первичный балл в тестовый"""
     tasks = (
         db.query(Task)
         .filter(

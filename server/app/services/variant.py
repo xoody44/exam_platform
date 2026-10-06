@@ -8,6 +8,7 @@ from ..models import Attempt, Variant
 
 
 def choose_variant(db: Session, student_id: int) -> Variant:
+    """выбирает вариант ученику: сначала unseen, затем самый разгруженный по попыткам"""
     active = (
         db.query(Variant)
         .filter(

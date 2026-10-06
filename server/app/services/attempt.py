@@ -46,6 +46,7 @@ def add_event(
     payload: dict[str, Any] | None = None,
     client_timestamp=None,
 ) -> None:
+    """сохраняет событие попытки в AttemptEvent"""
     db.add(
         AttemptEvent(
             attempt_id=attempt_id,
@@ -63,6 +64,7 @@ def add_event(
 
 
 def _load_tasks(db: Session, variant_id: int) -> list[Task]:
+    """загружает неархивированные задания варианта с полями и файлами"""
     return (
         db.query(Task)
         .options(selectinload(Task.fields), selectinload(Task.files))
@@ -76,6 +78,7 @@ def _load_tasks(db: Session, variant_id: int) -> list[Task]:
 
 
 def _register_machine(db: Session, machine_id: str | None) -> None:
+    """закрывает или обновляет запись о машине ученика"""
     if not machine_id:
         return
     machine = db.query(Machine).filter(Machine.machine_id == machine_id).first()
@@ -94,6 +97,7 @@ def _finalize(
     reason: str,
     grade: bool,
 ) -> None:
+    """помечает попытку завершённой, считает длительность и опционально проверяет"""
     attempt.status = status
     attempt.finished_at = utcnow()
     attempt.finish_reason = reason
@@ -107,6 +111,7 @@ def _finalize(
 
 
 def expire_if_needed(db: Session, attempt: Attempt) -> Attempt:
+    """автоматически завершает попытку, если время вышло"""
     if (
         attempt.status == STATUS_IN_PROGRESS
         and attempt.expires_at is not None
@@ -128,6 +133,7 @@ def _validate_answers(
     attempt: Attempt,
     items: list[AnswerItemIn],
 ) -> list[tuple[int, int, str]]:
+    """отбрасывает ответы, которые не относятся к заданиям варианта попытки"""
     if not items:
         return []
 
@@ -157,6 +163,7 @@ def _upset_answers(
     attempt: Attempt,
     validated: list[tuple[int, int, str]],
 ) -> None:
+    """вставляет или обновляет сохранённые ответы ученика"""
     existing = {
         aa.answers_field_id: aa
         for aa in db.query(AttemptAnswer)
@@ -180,6 +187,7 @@ def _upset_answers(
 
 
 def build_state(db: Session, attempt: Attempt) -> AttemptStateOut:
+    """собирает полное состояние попытки для клиента ученика"""
     variant = db.get(Variant, attempt.variant_id)
     tasks = _load_tasks(db, attempt.variant_id)
     return AttemptStateOut(
@@ -192,6 +200,7 @@ def build_state(db: Session, attempt: Attempt) -> AttemptStateOut:
 
 
 def build_result(db: Session, attempt: Attempt) -> AttemptResultOut:
+    """собирает результаты попытки для экрана итогов ученика"""
     tasks = _load_tasks(db, attempt.variant_id)
     answers = {
         aa.answers_field_id: aa
@@ -265,6 +274,7 @@ def build_result(db: Session, attempt: Attempt) -> AttemptResultOut:
 def start_attempt(
     db: Session, student: Student, machine_id: str | None
 ) -> AttemptStateOut:
+    """закрывает предыдущую незавершённую попытку и создаёт новую с выбранным вариантом"""
     previous = (
         db.query(Attempt)
         .filter(
@@ -317,6 +327,7 @@ def start_attempt(
 
 
 def get_attempt_for_student(db: Session, attempt_id: int, student: Student) -> Attempt:
+    """проверяет принадлежность попытки ученику и обрабатывает истечение времени"""
     attempt = db.get(Attempt, attempt_id)
     if attempt is None or attempt.student_id != student.id:
         raise not_found("попытка не найдена")
@@ -328,6 +339,7 @@ def save_answers(
     attempt: Attempt,
     items: list[AnswerItemIn],
 ) -> int:
+    """сохраняет ответы активной попытки, возвращает количество сохранённых"""
     if attempt.status != STATUS_IN_PROGRESS:
         raise bad_request("Попытка завершена, изменять ответы нельзя")
 
@@ -350,6 +362,7 @@ def send_events(
     student: Student,
     events: list[EventItemIn],
 ) -> int:
+    """принимает пакет событий телеметрии от клиента, возвращает количество принятых"""
     for e in events:
         db.add(
             AttemptEvent(
@@ -374,6 +387,7 @@ def finish_attempt(
     reason: str,
     answers: list[AnswerItemIn] | None,
 ) -> AttemptResultOut:
+    """завершает попытку: финальные ответы, статус, автопроверка и события"""
     attempt = expire_if_needed(db, attempt)
 
     if attempt.status != STATUS_IN_PROGRESS:

@@ -2,6 +2,7 @@ import socket
 
 
 def get_lan_ipv4_addresses() -> list[str]:
+    """все не-localhost IPv4-адреса машины из DNS-имени хоста"""
     ips: list[str] = []
     try:
         hostname = socket.gethostname()
@@ -15,6 +16,7 @@ def get_lan_ipv4_addresses() -> list[str]:
 
 
 def get_primary_ipv4() -> str:
+    """основной адрес сети: определяет через UDP-сокет, с fallback на список LAN"""
     probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         probe.connect(("10.255.255.255", 1))
@@ -27,4 +29,5 @@ def get_primary_ipv4() -> str:
 
 
 def server_url_for_clients(port: int) -> str:
+    """http-адрес сервера в локальной сети для клиентов"""
     return f"http://{get_primary_ipv4()}:{port}"
