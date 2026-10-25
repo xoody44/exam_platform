@@ -197,15 +197,11 @@ class ExamPage(QWidget):
 
         for key, caption in (
             ("statement_text", "Текст задания"),
-            ("instruction_text", "Инструкция"),
+            ("instruction_text", "Инструкция к заданию"),
             ("source_data_text", "Исходные данные"),
         ):
             text = task.get(key)
             if text:
-                if task.get("task_type") == "code":
-                    self._render_code_block(task)
-                    self.content_layout.addStretch()
-                    return
                 head = QLabel(caption)
                 head.setObjectName("section")
                 body = QLabel(text)
@@ -228,20 +224,37 @@ class ExamPage(QWidget):
                 )
                 self.content_layout.addWidget(button)
 
-        head = QLabel("Ответы")
-        head.setObjectName("section")
-        self.content_layout.addWidget(head)
+        if task.get("task_type") == "code":
+            public_tests = task.get("public_tests") or []
+            if public_tests:
+                head = QLabel("Открытые тесты")
+                head.setObjectName("section")
+                self.content_layout.addWidget(head)
+                for t in public_tests:
+                    body = QLabel(
+                        f"{t['name']}\n"
+                        f"Вход:\n{t['stdin_text']}\n"
+                        f"Ожидаемый выход:\n{t['expected_stdout_text']}"
+                    )
+                    body.setWordWrap(True)
+                    body.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+                    self.content_layout.addWidget(body)
 
-        for field in task.get("fields", []):
-            label = QLabel(field["label"])
-            label.setObjectName("section")
-            label.setWordWrap(True)
-            edit = QLineEdit(self.session.answers.get(field["id"], ""))
-            edit.textChanged.connect(
-                lambda text, fid=field["id"]: self.answer_changed.emit(fid, text)
-            )
-            self.content_layout.addWidget(label)
-            self.content_layout.addWidget(edit)
+            self._render_code_block(task)
+        else:
+            head = QLabel("Ответы")
+            head.setObjectName("section")
+            self.content_layout.addWidget(head)
+            for field in task.get("fields", []):
+                label = QLabel(field["label"])
+                label.setObjectName("section")
+                label.setWordWrap(True)
+                edit = QLineEdit(self.session.answers.get(field["id"], ""))
+                edit.textChanged.connect(
+                    lambda text, fid=field["id"]: self.answer_changed.emit(fid, text)
+                )
+                self.content_layout.addWidget(label)
+                self.content_layout.addWidget(edit)
 
         self.content_layout.addStretch()
 
