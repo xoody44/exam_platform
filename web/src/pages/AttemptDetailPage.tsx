@@ -12,6 +12,14 @@ const statusMeta: Record<string, { color: string; label: string }> = {
   aborted: { color: 'error', label: 'прервана' },
 }
 
+const testStatusMeta: Record<string, { color: string; label: string }> = {
+  passed: { color: 'success', label: 'пройден' },
+  wrong_answer: { color: 'error', label: 'неверный ответ' },
+  runtime_error: { color: 'error', label: 'ошибка выполнения' },
+  timeout: { color: 'warning', label: 'превышено время' },
+  compile_error: { color: 'error', label: 'ошибка компиляции' },
+}
+
 export default function AttemptDetailPage() {
   const { id } = useParams()
   const [data, setData] = useState<AttemptDetail | null>(null)
@@ -71,37 +79,85 @@ export default function AttemptDetailPage() {
           key={task.task_id}
           size="small"
           style={{ marginTop: 16 }}
-          title={`Задание ${task.number}. ${task.title}`}
+          title={
+            <span>
+              Задание {task.number}. {task.title}{' '}
+              {task.code && <Tag color="purple">программа ({task.code.language})</Tag>}
+            </span>
+          }
           extra={
             <Tag color={task.score === task.max_score ? 'success' : task.score > 0 ? 'warning' : 'default'}>
               {task.score} из {task.max_score}
             </Tag>
           }
         >
-          <Table<StudentAnswerView>
-            rowKey="field_id"
-            size="small"
-            pagination={false}
-            dataSource={task.answers}
-            columns={[
-              { title: 'Поле', dataIndex: 'field_label' },
-              {
-                title: 'Ответ ученика',
-                dataIndex: 'student_answer',
-                render: (v: string) =>
-                  v === '' ? <Typography.Text type="secondary">- нет ответа -</Typography.Text> : v,
-              },
-              { title: 'Правильный ответ', dataIndex: 'expected_answer' },
-              {
-                title: 'Верно',
-                dataIndex: 'is_correct',
-                width: 90,
-                render: (v: boolean | null) =>
-                  v ? <Tag color="success">да</Tag> : <Tag color="error">нет</Tag>,
-              },
-              { title: 'Балл', dataIndex: 'score', width: 80, render: (v: number | null) => v ?? 0 },
-            ]}
-          />
+          {task.code ? (
+            <>
+              <Typography.Text strong>Код ученика:</Typography.Text>
+              <pre
+                style={{
+                  background: '#1e1e1e',
+                  color: '#d4d4d4',
+                  padding: 12,
+                  borderRadius: 6,
+                  overflow: 'auto',
+                  maxHeight: 320,
+                  whiteSpace: 'pre-wrap',
+                }}
+              >
+                {task.code.source_code || '(код не отправлялся)'}
+              </pre>
+
+              <Table
+                rowKey="test_id"
+                size="small"
+                pagination={false}
+                dataSource={task.code.tests}
+                columns={[
+                  { title: 'Тест', dataIndex: 'name' },
+                  {
+                    title: 'Статус',
+                    dataIndex: 'status',
+                    render: (s: string) => {
+                      const m = testStatusMeta[s] ?? { color: 'default', label: s }
+                      return <Tag color={m.color}>{m.label}</Tag>
+                    },
+                  },
+                  {
+                    title: 'Пройден',
+                    dataIndex: 'passed',
+                    width: 100,
+                    render: (v: boolean) => (v ? <Tag color="success">да</Tag> : <Tag color="error">нет</Tag>),
+                  },
+                ]}
+              />
+            </>
+          ) : (
+            <Table<StudentAnswerView>
+              rowKey="field_id"
+              size="small"
+              pagination={false}
+              dataSource={task.answers}
+              columns={[
+                { title: 'Поле', dataIndex: 'field_label' },
+                {
+                  title: 'Ответ ученика',
+                  dataIndex: 'student_answer',
+                  render: (v: string) =>
+                    v === '' ? <Typography.Text type="secondary">- нет ответа -</Typography.Text> : v,
+                },
+                { title: 'Правильный ответ', dataIndex: 'expected_answer' },
+                {
+                  title: 'Верно',
+                  dataIndex: 'is_correct',
+                  width: 90,
+                  render: (v: boolean | null) =>
+                    v ? <Tag color="success">да</Tag> : <Tag color="error">нет</Tag>,
+                },
+                { title: 'Балл', dataIndex: 'score', width: 80, render: (v: number | null) => v ?? 0 },
+              ]}
+            />
+          )}
         </Card>
       ))}
     </>

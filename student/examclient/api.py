@@ -18,6 +18,7 @@ class ExamApi:
         self._http = requests.Session()
 
     def _request(self, method: str, path: str, retries: int = 2, **kwargs: Any) -> Any:
+        timeout = kwargs.pop("timeout", self.timeout)
         headers = dict(kwargs.pop("headers", {}))
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"
@@ -28,7 +29,7 @@ class ExamApi:
                 response = self._http.request(
                     method,
                     self.server_url + path,
-                    timeout=self.timeout,
+                    timeout=timeout,
                     headers=headers,
                     **kwargs,
                 )
@@ -103,6 +104,7 @@ class ExamApi:
             f"/api/student/attempts/{attempt_id}/finish",
             json={"reason": reason, "answers": answers},
             retries=retries,
+            timeout=120,
         )
 
     def download_file(self, file_id: int) -> bytes:
@@ -115,3 +117,18 @@ class ExamApi:
         if response.status_code >= 400:
             raise ApiError("не удалось скачать файл", response.status_code)
         return response.content
+
+    def submit_code(
+        self,
+        attempt_id: int,
+        task_id: int,
+        language: str,
+        source: str,
+        run: bool = True,
+    ) -> dict:
+        return self._request(
+            "PUT",
+            f"/api/student/attempts/{attempt_id}/tasks/{task_id}/code",
+            json={"language": language, "source_code": source, "run": run},
+            timeout=90,
+        )

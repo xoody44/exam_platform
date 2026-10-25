@@ -57,6 +57,8 @@ class MainWindow(QMainWindow):
         self.exam_page.task_opened.connect(self._on_task_opened)
         self.exam_page.finish_requested.connect(self._request_finish)
         self.exam_page.download_requested.connect(self._download_file)
+        self.exam_page.code_changed.connect(self._on_code_changed)
+        self.exam_page.code_check_requested.connect(self._request_code_check)
         self.result_page.exit_requested.connect(self.close)
 
         self.tick_timer = QTimer(self)
@@ -105,6 +107,7 @@ class MainWindow(QMainWindow):
 
     def _enter_exam(self, data: dict) -> None:
         self.session.load_attempt(data)
+        self.session.codes.clear()
         if self.config.locker_enabled:
             self.locker.start_lock()
             self.emit_event("block_started", {"machine_id": self.config.machine_id})
@@ -158,6 +161,16 @@ class MainWindow(QMainWindow):
                 self.session.offline_events.clear()
         except ApiError:
             pass
+
+        for task_id, state in list(self.session.codes.items()):
+            if state.get("dirty"):
+                try:
+                    self.api.submit_code(
+                        aid, task_id, state["language"], state["source"], run=False
+                    )
+                    state["dirty"] = False
+                except ApiError:
+                    pass
         return self.api.save_answers(aid, snapshot)
 
     def _write_local_backup(self, snapshot: list[dict]) -> None:
@@ -196,10 +209,28 @@ class MainWindow(QMainWindow):
         events = list(self.session.offline_events)
         events.append(make_event("exam_finish_requested", {"reason": reason}))
         try:
+            for task_id, state in list(self.session.codes.items()):
+                if state.get("dirty"):
+                    try:
+                        self.api.submit_code(
+                            aid, task_id, state["language"], state["source"], run=False
+                        )
+                        state["dirty"] = False
+                    except ApiError:
+                        pass
             self.api.send_events(aid, events)
             self.session.offline_events.clear()
         except ApiError:
             pass
+        for task_id, state in list(self.session.codes.items()):
+            if state.get("dirty"):
+                try:
+                    self.api.submit_code(
+                        aid, task_id, state["language"], state["source"], run=False
+                    )
+                    state["dirty"] = False
+                except ApiError:
+                    pass
         return self.api.finish(aid, reason, snapshot)
 
     def _download_file(self, file_id: int, name: str) -> None:
@@ -207,6 +238,26 @@ class MainWindow(QMainWindow):
             "download", lambda: (name, self.api.download_file(file_id))
         )
 
+    def _on_code_changed(self, task_id: int, language: str, source: str) -> None:
+        self.exam_page.update_nav()
+
+    def _request_code_check(self, task_id: int) -> None:
+        if not self.session.active:
+            return
+        state = self.exam_page.current_code_state(task_id) or self.session.get_code(task_id)
+        if not state["source"].strip():
+            QMessageBox.warning(self, "Проверка", "Введите код решения")
+            return
+        self.exam_page.set_status("Проверка кода на тестах...")
+        aid = self.session.attempt_id
+        self.worker.submit(
+            "code_check",
+            lambda: (task_id, self.api.submit_code(
+                aid, task_id, state["language"], state["source"], run=True
+            )),
+        )
+
+        
     def _on_task_done(self, name: str, result, error) -> None:
         if name == "exam_info":
             if error:
@@ -284,6 +335,17 @@ class MainWindow(QMainWindow):
                     os.startfile(dest)  # type: ignore[attr-defined]
                 except OSError:
                     pass
+
+        elif name == "code_check":
+            self.exam_page.set_status("Экзамен идёт")
+            if error:
+                QMessageBox.warning(self, "Проверка", f"Не удалось проверить код: {error}")
+                return
+            task_id, run = result
+            self.session.get_code(task_id)["dirty"] = False
+            self.exam_page.set_code_results(
+                task_id, run.get("tests", []), run.get("all_passed")
+            )
 
         elif name == "event":
             if error:

@@ -4,6 +4,8 @@ from datetime import datetime
 from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 
+from .grading import task_score_for_attempt
+
 from ..exceptions import bad_request, not_found
 from ..models import (
     STATUS_ABORTED,
@@ -37,6 +39,8 @@ from ..schemas import (
     StudentOut,
     StudentWithAttemptsOut,
     StudentsListOut,
+    CodeSubmissionOut,
+    CodeTestResultOut,
 )
 from .audit import log_action
 
@@ -169,101 +173,120 @@ def list_attempts(
 
 
 def get_attempt_detail(db: Session, attempt_id: int) -> AttemptDetailOut:
-    """детали попытки: ответы ученика рядом с ожидаемыми для ручной проверки"""
-    attempt = (
-        db.query(Attempt)
-        .options(
-            selectinload(Attempt.student).selectinload(Student.school),
-            selectinload(Attempt.variant),
+    """Детальный просмотр попытки: правильные ответы + код ученика (ТЗ 10.5)."""
+    import json as _json
+    import traceback
+    import logging
+
+    logger = logging.getLogger("exam.admin")
+
+    try:
+        attempt = (
+            db.query(Attempt)
+            .options(
+                selectinload(Attempt.student).selectinload(Student.school),
+                selectinload(Attempt.variant),
+            )
+            .filter(Attempt.id == attempt_id, Attempt.deleted_at.is_(None))
+            .first()
         )
-        .filter(Attempt.id == attempt_id, Attempt.deleted_at.is_(None))
-        .first()
-    )
-    if attempt is None:
-        raise not_found("попытка не найдена")
+        if attempt is None:
+            raise not_found("Попытка не найдена")
 
-    tasks = (
-        db.query(Task)
-        .options(selectinload(Task.fields))
-        .filter(Task.variant_id == attempt.variant_id)
-        .order_by(Task.number)
-        .all()
-    )
+        tasks = (
+            db.query(Task)
+            .options(selectinload(Task.fields))
+            .filter(Task.variant_id == attempt.variant_id)
+            .order_by(Task.number)
+            .all()
+        )
 
-    answers = {
-        aa.answers_field_id: aa
-        for aa in db.query(AttemptAnswer)
-        .filter(AttemptAnswer.attempt_id == attempt.id)
-        .all()
-    }
+        answers = {
+            aa.answers_field_id: aa
+            for aa in db.query(AttemptAnswer)
+            .filter(AttemptAnswer.attempt_id == attempt.id)
+            .all()
+        }
 
-    graded = attempt.status in FINISHED_STATUSES
-    max_primary = 0
+        graded = attempt.status in FINISHED_STATUSES
+        max_primary = 0
 
-    task_results: list[AdminTaskResultOut] = []
-    for task in tasks:
-        max_primary += task.max_score
-        task_answers: list[AdminAnswerOut] = []
-        task_score = 0
+        task_results: list[AdminTaskResultOut] = []
+        for task in tasks:
+            max_primary += task.max_score
+            task_score, sub = task_score_for_attempt(db, task, attempt)
 
-        for f in task.fields:
-            aa = answers.get(f.id)
-            task_answers.append(
+            task_answers = [
                 AdminAnswerOut(
                     field_id=f.id,
                     field_label=f.label,
                     input_type=f.input_type,
-                    student_answer=aa.raw_value if aa else "",
+                    student_answer=answers[f.id].raw_value if f.id in answers else "",
                     expected_answer=f.expected_answer,
-                    is_correct=aa.is_correct if aa else False,
-                    score=aa.score if aa else None,
+                    is_correct=answers[f.id].is_correct if f.id in answers else False,
+                    score=answers[f.id].score if f.id in answers else None,
+                )
+                for f in task.fields
+            ]
+
+            code_out = None
+            if sub is not None:
+                stored = _json.loads(sub.results_json) if sub.results_json else []
+                code_out = CodeSubmissionOut(
+                    language=sub.language,
+                    source_code=sub.source_code,
+                    tests=[CodeTestResultOut(**r) for r in stored],
+                    all_passed=sub.all_passed,
+                )
+
+            task_results.append(
+                AdminTaskResultOut(
+                    task_id=task.id,
+                    number=task.number,
+                    title=task.title,
+                    score=task_score if graded else 0,
+                    max_score=task.max_score,
+                    answers=task_answers,
+                    code=code_out,
                 )
             )
 
-        if graded:
-            for f in task.fields:
-                aa = answers.get(f.id)
-                task_score += aa.score or 0 if aa else 0
+        conversion_name: str | None = None
+        max_test: int | None = None
+        if attempt.conversion_table_id is not None:
+            table = db.get(ConversionTable, attempt.conversion_table_id)
+            if table is not None:
+                conversion_name = table.name
+                max_test = max((e.test_score for e in table.entries), default=None)
 
-        task_results.append(
-            AdminTaskResultOut(
-                task_id=task.id,
-                number=task.number,
-                title=task.title,
-                score=task_score if graded else 0,
-                max_score=task.max_score,
-                answers=task_answers,
-            )
+        scores = ScoresOut(
+            primary_score=attempt.primary_score if graded else None,
+            max_primary_score=max_primary,
+            test_score=attempt.test_score if graded else None,
+            max_test_score=max_test if graded else None,
+            conversion_table_id=attempt.conversion_table_id if graded else None,
         )
 
-    max_test: int | None = None
-    conversion_name: str | None = None
-    if attempt.conversion_table_id is not None:
-        table = db.get(ConversionTable, attempt.conversion_table_id)
-        if table is not None:
-            conversion_name = table.name
-            max_test = max((e.test_score for e in table.entries), default=None)
+        return AttemptDetailOut(
+            attempt=attempt,
+            student=StudentOut(
+                id=attempt.student.id,
+                full_name=attempt.student.full_name,
+                school_name=attempt.student.school.name,
+            ),
+            variant_title=attempt.variant.title if attempt.variant else "",
+            conversion_table_name=conversion_name,
+            scores=scores,
+            tasks=task_results,
+        )
 
-    scores = ScoresOut(
-        primary_score=attempt.primary_score if graded else None,
-        max_primary_score=max_primary,
-        test_score=attempt.test_score if graded else None,
-        max_test_score=max_test if graded else None,
-        conversion_table_id=attempt.conversion_table_id if graded else None,
-    )
-
-    return AttemptDetailOut(
-        attempt=attempt,
-        student=StudentOut(
-            id=attempt.student.id,
-            full_name=attempt.student.full_name,
-            school_name=attempt.student.school.name,
-        ),
-        variant_title=attempt.variant.title if attempt.variant else "",
-        conversion_table_name=conversion_name,
-        scores=scores,
-        tasks=task_results,
-    )
+    except Exception as exc:
+        import sys
+        tb = traceback.format_exc()
+        print(f"ERROR in get_attempt_detail: {exc}", file=sys.stderr)
+        print(f"TRACEBACK:\n{tb}", file=sys.stderr)
+        sys.stderr.flush()
+        raise
 
 
 

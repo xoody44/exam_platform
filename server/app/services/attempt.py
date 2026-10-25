@@ -26,13 +26,15 @@ from ..schemas import (
     AttemptInfoOut,
     AttemptResultOut,
     AttemptStateOut,
+    CodeSubmissionOut,
+    CodeTestResultOut,
     EventItemIn,
     ScoresOut,
     StudentAnswerOut,
     StudentTaskOut,
     TaskResultOut,
 )
-from .grading import compute_task_score, grade_attempt
+from .grading import compute_task_score, grade_attempt, task_score_for_attempt
 from .settings import get_setting
 from .variant import choose_variant
 
@@ -217,25 +219,30 @@ def build_result(db: Session, attempt: Attempt) -> AttemptResultOut:
     for task in tasks:
         max_primary += task.max_score
 
-        parts: list[tuple[int, bool]] = []
-        student_answers: list[StudentAnswerOut] = []
-
-        for f in task.fields:
-            aa = answers.get(f.id)
-            parts.append((f.points, bool(aa.is_correct) if aa else False))
-            student_answers.append(
-                StudentAnswerOut(
-                    field_id=f.id,
-                    label=f.label,
-                    value=aa.raw_value if aa else "",
-                )
+        student_answers: list[StudentAnswerOut] = [
+            StudentAnswerOut(
+                field_id=f.id,
+                label=f.label,
+                value=answers[f.id].raw_value if f.id in answers else "",
             )
+            for f in task.fields
+        ]
 
-        task_score = (
-            compute_task_score(task.scoring_type, task.max_score, parts)
-            if graded
-            else None
-        )
+        task_score, sub = task_score_for_attempt(db, task, attempt)
+        if not graded:
+            task_score = None
+
+        code_out = None
+        if sub is not None:
+            code_out = CodeSubmissionOut(
+                language=sub.language,
+                source_code=sub.source_code,
+                tests=[
+                    CodeTestResultOut(**r)
+                    for r in (json.loads(sub.results_json) if sub.results_json else [])
+                ],
+                all_passed=sub.all_passed,
+            )
 
         task_results.append(
             TaskResultOut(
@@ -244,6 +251,7 @@ def build_result(db: Session, attempt: Attempt) -> AttemptResultOut:
                 score=task_score,
                 max_score=task.max_score,
                 answers=student_answers,
+                code=code_out,
             )
         )
 

@@ -79,6 +79,7 @@ export interface AdminTaskResult {
   title: string
   score: number
   max_score: number
+  code: CodeSubmission | null
   answers: StudentAnswerView[]
 }
 
@@ -148,6 +149,9 @@ export interface Settings {
   exam_duration_minutes: number
   instruction_text: string
   max_file_size_bytes: number
+  python_executable: string
+  csc_path: string
+  code_time_limit_seconds: number
 }
 
 export interface ConversionTable {
@@ -175,10 +179,12 @@ export interface AdminTask {
   teacher_comment: string | null
   max_score: number
   scoring_type: 'all_or_nothing' | 'partial_sum'
+  task_type: string
   created_at: string
   updated_at: string
   archived_at: string | null
   fields: AdminField[]
+  tests: AdminCodeTest[]
   files: Array<{
     id: number
     original_name: string
@@ -196,4 +202,33 @@ export interface AdminField {
   sort_order: number
   points: number
   expected_answer: string
+}
+
+export interface AdminCodeTest {
+  id: number
+  sort_order: number
+  name: string
+  stdin_text: string
+  expected_stdout_text: string
+  is_public: boolean
+}
+
+export interface CodeTestResult {
+  test_id: number
+  name: string
+  status: string
+  passed: boolean
+}
+
+export interface CodeRunResult {
+  tests: CodeTestResult[]
+  all_passed: boolean | null
+  compile_log: string | null
+}
+
+export interface CodeSubmission {
+  language: string
+  source_code: string
+  tests: CodeTestResult[]
+  all_passed: boolean | null
 }

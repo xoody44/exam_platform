@@ -33,6 +33,18 @@ STATUS_ABORTED = "aborted"
 ROLE_ADMIN = "admin"
 ROLE_STUDENT = "student"
 
+TASK_TYPE_ANSWER = "answer"
+TASK_TYPE_CODE = "code"
+
+LANG_PYTHON = "python"
+LANG_CSHARP = "csharp"
+
+TEST_PASSED = "passed"
+TEST_WRONG_ANSWER = "wrong_answer"
+TEST_RUNTIME_ERROR = "runtime_error"
+TEST_TIMEOUT = "timeout"
+TEST_COMPILE_ERROR = "compile_error"
+
 
 def utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
@@ -117,6 +129,14 @@ class Task(Base):
     max_score: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     scoring_type: Mapped[str] = mapped_column(
         String(30), nullable=False, default=SCORING_ALL_OR_NOTHING
+    )
+
+    task_type: Mapped[str] = mapped_column(
+        String(20), nullable=False, default=TASK_TYPE_ANSWER
+    )
+
+    tests: Mapped[list["CodeTest"]] = relationship(
+        back_populates="task", order_by="CodeTest.sort_order"
     )
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
@@ -318,3 +338,42 @@ class Machine(Base):
 
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class CodeTest(Base):
+    """тест для программного задания: stdin -> ожидаемый stdout."""
+    __tablename__ = "code_tests"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id"), nullable=False)
+
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    name: Mapped[str] = mapped_column(String(200), nullable=False, default="Тест")
+    stdin_text: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    expected_stdout_text: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    is_public: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+    task: Mapped["Task"] = relationship(back_populates="tests")
+
+
+class AttemptCodeSubmission(Base):
+    """код ученика в попытке + результаты последней проверки."""
+    __tablename__ = "attempt_code_submissions"
+    __table_args__ = (
+        UniqueConstraint("attempt_id", "task_id", name="uq_attempt_task_code"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    attempt_id: Mapped[int] = mapped_column(ForeignKey("attempts.id"), nullable=False)
+    task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id"), nullable=False)
+
+    language: Mapped[str] = mapped_column(String(20), nullable=False)
+    source_code: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    results_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    all_passed: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=utcnow, onupdate=utcnow
+    )

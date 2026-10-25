@@ -41,6 +41,10 @@ class Settings(BaseSettings):
 
     default_exam_duration_minutes: int = 235
 
+    python_executable: str = ""
+    csc_path: str = ""
+    code_time_limit_seconds: int = 5
+
     @property
     def is_sqlite(self) -> bool:
         """признак того, что используется база SQLite"""

@@ -32,6 +32,7 @@ class SessionState:
     answers: dict = field(default_factory=dict)
     expires_at: datetime | None = None
     offline_events: list = field(default_factory=list)
+    codes: dict = field(default_factory=dict)
     finished: bool = False
 
     @property
@@ -64,7 +65,14 @@ class SessionState:
                 )
         return result
 
+    def get_code(self, task_id: int) -> dict:
+        return self.codes.setdefault(
+            task_id, {"language": "python", "source": "", "dirty": False}
+        )
+
     def is_task_answered(self, task: dict) -> bool:
+        if task.get("task_type") == "code":
+            return bool(self.get_code(task["id"])["source"].strip())
         return any(
             self.answers.get(item["id"], "").strip() for item in task.get("fields", [])
         )

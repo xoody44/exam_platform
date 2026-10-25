@@ -4,14 +4,18 @@ from pathlib import Path
 from fastapi import UploadFile
 from sqlalchemy.orm import Session, selectinload
 
+from ..services.code_runner import run_code_tests
+
 from ..config import get_settings
 from ..exceptions import bad_request, conflict, not_found
 from ..models import (
     SCORING_PARTIAL_SUM,
     STATUS_FINISHED,
     STATUS_TIME_EXPIRED,
+    TASK_TYPE_CODE,
     AnswerField,
     Attempt,
+    CodeTest,
     ConversionEntry,
     ConversionTable,
     Task,
@@ -21,13 +25,19 @@ from ..models import (
     utcnow,
 )
 from ..schemas import (
+    AdminCodeTestOut,
     AdminFieldOut,
     AdminTaskOut,
+    CodeRunOut,
+    CodeTestIn,
+    CodeTestPatchIn,
+    CodeTestResultOut,
     ConversionTableCreateIn,
     ConversionTableOut,
     ConversionTablePatchIn,
     FieldCreateIn,
     FieldPatchIn,
+    RunReferenceIn,
     SettingsOut,
     SettingsPatchIn,
     TaskCreateIn,
@@ -565,3 +575,76 @@ def activate_conversion_table(db: Session, user: User, table_id: int) -> Convers
     db.refresh(table)
     log_action(db, user.id, "activate_conversion_table", "conversion_table", table.id, {"name": table.name})
     return ConversionTableOut.model_validate(table)
+
+
+def _test_or_404(db: Session, test_id: int) -> CodeTest:
+    test = db.get(CodeTest, test_id)
+    if test is None:
+        raise not_found("Тест не найден")
+    return test
+
+
+def create_code_test(db: Session, user: User, task_id: int, payload: CodeTestIn) -> AdminCodeTestOut:
+    task = _task_or_404(db, task_id)
+    if task.task_type != TASK_TYPE_CODE:
+        raise bad_request("Тесты можно добавлять только заданиям типа code")
+    if variant_has_finished_attempts(db, task.variant_id):
+        raise conflict("Задание использовано в завершённых попытках: добавлять тесты нельзя")
+
+    test = CodeTest(task_id=task.id, **payload.model_dump())
+    db.add(test)
+    db.commit()
+    db.refresh(test)
+    log_action(db, user.id, "create_code_test", "code_test", test.id, {"task_id": task.id})
+    return AdminCodeTestOut.model_validate(test)
+
+
+def patch_code_test(db: Session, user: User, test_id: int, payload: CodeTestPatchIn) -> AdminCodeTestOut:
+    test = _test_or_404(db, test_id)
+    task = _task_or_404(db, test.task_id)
+    if variant_has_finished_attempts(db, task.variant_id):
+        raise conflict("Задание использовано в завершённых попытках: править тесты нельзя")
+
+    for key, value in payload.model_dump(exclude_unset=True).items():
+        setattr(test, key, value)
+    db.commit()
+    db.refresh(test)
+    log_action(db, user.id, "update_code_test", "code_test", test.id, None)
+    return AdminCodeTestOut.model_validate(test)
+
+
+def delete_code_test(db: Session, user: User, test_id: int) -> int:
+    test = _test_or_404(db, test_id)
+    task = _task_or_404(db, test.task_id)
+    if variant_has_finished_attempts(db, task.variant_id):
+        raise conflict("Задание использовано в завершённых попытках: удалять тесты нельзя")
+    db.delete(test)
+    db.commit()
+    log_action(db, user.id, "delete_code_test", "code_test", test_id, None)
+    return test_id
+
+
+def run_reference_solution(db: Session, task_id: int, payload: RunReferenceIn) -> CodeRunOut:
+    task = _task_or_404(db, task_id)
+    if task.task_type != TASK_TYPE_CODE:
+        raise bad_request("Прогон эталона доступен только заданиям типа code")
+    tests = (
+        db.query(CodeTest)
+        .filter(CodeTest.task_id == task.id)
+        .order_by(CodeTest.sort_order)
+        .all()
+    )
+    results, compile_log = run_code_tests(
+        db=db,
+        language=payload.language, 
+        source=payload.source_code, 
+        tests=tests
+    )
+    return CodeRunOut(
+        tests=[
+            CodeTestResultOut(test_id=r.test_id, name=r.name, status=r.status, passed=r.passed)
+            for r in results
+        ],
+        all_passed=bool(results) and all(r.passed for r in results),
+        compile_log=compile_log,
+    )

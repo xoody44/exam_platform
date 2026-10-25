@@ -101,6 +101,31 @@ class StudentFieldOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class AdminCodeTestOut(BaseModel):
+    id: int
+    sort_order: int
+    name: str
+    stdin_text: str
+    expected_stdout_text: str
+    is_public: bool
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PublicCodeTestOut(BaseModel):
+    id: int
+    sort_order: int
+    name: str
+    stdin_text: str
+    expected_stdout_text: str
+
+
+class CodeTestResultOut(BaseModel):
+    test_id: int
+    name: str
+    status: str
+    passed: bool
+
+
 class StudentTaskOut(BaseModel):
     """задание в том виде, в котором его видит ученик"""
 
@@ -112,8 +137,10 @@ class StudentTaskOut(BaseModel):
     source_data_text: str | None
     max_score: int
     scoring_type: str
+    task_type: str = "answer"
     files: list[TaskFileOut] = []
     fields: list[StudentFieldOut] = []
+    public_tests: list[PublicCodeTestOut] = []
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -205,6 +232,7 @@ class TaskResultOut(BaseModel):
     score: int | None
     max_score: int
     answers: list[StudentAnswerOut] = []
+    code: CodeSubmissionOut | None = None 
 
 
 class ScoresOut(BaseModel):
@@ -226,7 +254,7 @@ class AttemptResultOut(BaseModel):
 
 
 class VariantCreateIn(BaseModel):
-    """создание варианта, заголовок можно не указывать — сгенерируется"""
+    """создание варианта, заголовок можно не указывать - сгенерируется"""
 
     title: str | None = Field(default=None, min_length=1, max_length=200)
 
@@ -297,6 +325,7 @@ class TaskCreateIn(BaseModel):
     teacher_comment: str | None = None
     max_score: int = Field(default=1, ge=0, le=4)
     scoring_type: Literal["all_or_nothing", "partial_sum"] = "all_or_nothing"
+    task_type: Literal ["answer", "code"] = "answer"
 
 
 class TaskPatchIn(BaseModel):
@@ -310,6 +339,7 @@ class TaskPatchIn(BaseModel):
     teacher_comment: str | None = None
     max_score: int | None = Field(default=None, ge=0, le=4)
     scoring_type: Literal["all_or_nothing", "partial_sum"] | None = None
+    task_type: Literal ["answer", "code"] | None = None
 
 
 class AdminTaskOut(BaseModel):
@@ -325,11 +355,13 @@ class AdminTaskOut(BaseModel):
     teacher_comment: str | None
     max_score: int
     scoring_type: str
+    task_type: str = "answer"  
     created_at: datetime
     updated_at: datetime
     archived_at: datetime | None
     fields: list[AdminFieldOut] = []
     files: list[TaskFileOut] = []
+    tests: list[AdminCodeTestOut] = [] 
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -385,19 +417,22 @@ class ConversionTableOut(BaseModel):
 
 
 class SettingsOut(BaseModel):
-    """текущие настройки системы"""
-
     exam_duration_minutes: int
     instruction_text: str
     max_file_size_bytes: int
+    python_executable: str
+    csc_path: str
+    code_time_limit_seconds: int
 
 
 class SettingsPatchIn(BaseModel):
-    """частичное обновление настроек системы"""
-
     exam_duration_minutes: int | None = Field(default=None, ge=1, le=600)
     instruction_text: str | None = None
     max_file_size_bytes: int | None = Field(default=None, ge=1)
+    python_executable: str | None = None
+    csc_path: str | None = None
+    code_time_limit_seconds: int | None = Field(default=None, ge=1, le=120)
+    
 
 
 class AttemptListItemOut(BaseModel):
@@ -437,6 +472,7 @@ class AdminTaskResultOut(BaseModel):
     score: int
     max_score: int
     answers: list[AdminAnswerOut] = []
+    code: CodeSubmissionOut | None = None
 
 
 class AttemptDetailOut(BaseModel):
@@ -593,3 +629,43 @@ class ClearResultsOut(BaseModel):
 
     deleted_count: int
     deleted_ids: list[int]
+
+
+class CodeTestIn(BaseModel):
+    name: str = Field(default="Тест", max_length=200)
+    stdin_text: str = ""
+    expected_stdout_text: str = ""
+    is_public: bool = False
+    sort_order: int = 0
+
+
+class CodeTestPatchIn(BaseModel):
+    name: str | None = Field(default=None, max_length=200)
+    stdin_text: str | None = None
+    expected_stdout_text: str | None = None
+    is_public: bool | None = None
+    sort_order: int | None = None
+
+
+class CodeSubmitIn(BaseModel):
+    language: Literal["python", "csharp"]
+    source_code: str = Field(max_length=65536)
+    run: bool = True
+
+
+class CodeRunOut(BaseModel):
+    tests: list[CodeTestResultOut] = []
+    all_passed: bool | None = None
+    compile_log: str | None = None
+
+
+class CodeSubmissionOut(BaseModel):
+    language: str
+    source_code: str
+    tests: list[CodeTestResultOut] = []
+    all_passed: bool | None = None
+
+
+class RunReferenceIn(BaseModel):
+    language: Literal["python", "csharp"]
+    source_code: str = Field(max_length=65536)

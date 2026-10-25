@@ -117,6 +117,15 @@ QHeaderView::section {
     padding: 8px;
     font-weight: 600;
 }
+QPlainTextEdit#codeEditor {
+    background-color: #1e1e1e;
+    border: 1px solid #4a4a4f;
+    border-radius: 4px;
+    padding: 8px;
+    color: #e6e6e6;
+    selection-background-color: #3e6db0;
+    selection-color: #ffffff;
+}
 QMessageBox { background-color: #2d2d30; }
 QMessageBox QLabel { color: #e6e6e6; }
 QScrollBar:vertical { background: transparent; width: 10px; }

@@ -1,15 +1,22 @@
+import json
 import logging
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+
+from ..exceptions import bad_request, not_found
+from ..services.code_runner import run_code_tests
 
 logger = logging.getLogger("exam.router.student")
 
 from ..database import get_db
 from ..dependencies import require_student
-from ..models import Student
+from ..models import STATUS_IN_PROGRESS, TASK_TYPE_CODE, AttemptCodeSubmission, CodeTest, Student, Task
 from ..schemas import (
     AttemptResultOut,
     AttemptStateOut,
+    CodeRunOut,
+    CodeSubmitIn,
+    CodeTestResultOut,
     FinishAttemptIn,
     SaveAnswersIn,
     SendEventsIn,
@@ -99,3 +106,76 @@ def get_attempt_result(
     """результаты завершённой попытки для экрана итогов"""
     attempt = attempt_service.get_attempt_for_student(db, attempt_id, student)
     return attempt_service.build_result(db, attempt)
+
+
+@router.put("/attempts/{attempt_id}/tasks/{task_id}/code", response_model=CodeRunOut)
+def submit_code(
+    attempt_id: int,
+    task_id: int,
+    payload: CodeSubmitIn,
+    student: Student = Depends(require_student),
+    db: Session = Depends(get_db),
+):
+    attempt = attempt_service.get_attempt_for_student(db, attempt_id, student)
+    if attempt.status != STATUS_IN_PROGRESS:
+        raise bad_request("попытка завершена, отправлять код нельзя")
+
+    task = db.get(Task, task_id)
+    if (
+        task is None
+        or task.variant_id != attempt.variant_id
+        or task.task_type != TASK_TYPE_CODE
+    ):
+        raise not_found("задание не найдено")
+
+    submission = (
+        db.query(AttemptCodeSubmission)
+        .filter(
+            AttemptCodeSubmission.attempt_id == attempt.id,
+            AttemptCodeSubmission.task_id == task.id,
+        )
+        .first()
+    )
+    if submission is None:
+        submission = AttemptCodeSubmission(
+            attempt_id=attempt.id, task_id=task.id
+        )
+        db.add(submission)
+    submission.language = payload.language
+    submission.source_code = payload.source_code
+    db.commit()
+
+    if not payload.run:
+        stored = json.loads(submission.results_json) if submission.results_json else []
+        return CodeRunOut(
+            tests=[CodeTestResultOut(**r) for r in stored],
+            all_passed=submission.all_passed,
+            compile_log=None,
+        )
+
+    tests = (
+        db.query(CodeTest)
+        .filter(CodeTest.task_id == task.id)
+        .order_by(CodeTest.sort_order)
+        .all()
+    )
+    results, _compile_log = run_code_tests(
+        db=db,
+        language=payload.language,
+        source=payload.source_code,
+        tests=tests,
+    )
+    submission.results_json = json.dumps([r.to_dict() for r in results], ensure_ascii=False)
+    submission.all_passed = bool(results) and all(r.passed for r in results)
+    db.commit()
+
+    return CodeRunOut(
+        tests=[
+            CodeTestResultOut(
+                test_id=r.test_id, name=r.name, status=r.status, passed=r.passed
+            )
+            for r in results
+        ],  
+        all_passed=submission.all_passed,
+        compile_log=None,
+    )

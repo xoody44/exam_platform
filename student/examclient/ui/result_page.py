@@ -74,7 +74,13 @@ class ResultPage(QWidget):
         self.table.setRowCount(len(tasks))
         for row, task in enumerate(tasks):
             self.table.setItem(row, 0, QTableWidgetItem(str(task["number"])))
-            answers_text = "; ".join(a["value"] or "-" for a in task["answers"])
+            code = task.get("code")
+            if code:
+                tests = code.get("tests") or []
+                passed = sum(1 for t in tests if t["passed"])
+                answers_text = f"Код на {code['language']}: тесты {passed} из {len(tests)}"
+            else:
+                answers_text = "; ".join(a["value"] or "-" for a in task["answers"])
             self.table.setItem(row, 1, QTableWidgetItem(answers_text))
             score = "-" if task["score"] is None else f"{task['score']} из {task['max_score']}"
             self.table.setItem(row, 2, QTableWidgetItem(score))

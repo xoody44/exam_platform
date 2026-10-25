@@ -1,13 +1,19 @@
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
+import json
 
 from sqlalchemy.orm import Session
 
+from ..services.code_runner import run_code_tests
+
 from ..models import (
     SCORING_PARTIAL_SUM,
+    TASK_TYPE_CODE,
     AnswerField,
     Attempt,
     AttemptAnswer,
+    AttemptCodeSubmission,
+    CodeTest,
     Task,
 )
 from .conversion import get_active_conversion_table
@@ -110,6 +116,48 @@ def grade_attempt(db: Session, attempt: Attempt) -> GradeResult:
     for task in tasks:
         max_primary += task.max_score
 
+        if task.task_type == TASK_TYPE_CODE:
+            submission = (
+                db.query(AttemptCodeSubmission)
+                .filter(
+                    AttemptCodeSubmission.attempt_id == attempt.id,
+                    AttemptCodeSubmission.task_id == task.id,
+                )
+                .first()
+            )
+            if submission is None or not submission.source_code.strip():
+                task_score = 0
+            else:
+                tests = (
+                    db.query(CodeTest)
+                    .filter(CodeTest.task_id == task.id)
+                    .order_by(CodeTest.sort_order)
+                    .all()
+                )
+                results, _log = run_code_tests(
+                    db=db,
+                    language=submission.language,
+                    source=submission.source_code,
+                    tests=tests,
+                )
+                submission.results_json = json.dumps(
+                    [r.to_dict() for r in results], ensure_ascii=False
+                )
+                submission.all_passed = bool(results) and all(r.passed for r in results)
+                task_score = task.max_score if submission.all_passed else 0
+
+            total_primary += task_score
+            task_grades.append(
+                TaskGrade(
+                    task_id=task.id,
+                    number=task.number,
+                    score=task_score,
+                    max_score=task.max_score,
+                    fields=[],
+                )
+            )
+            continue
+
         fields = (
             db.query(AnswerField)
             .filter(AnswerField.task_id == task.id)
@@ -196,3 +244,35 @@ def grade_attempt(db: Session, attempt: Attempt) -> GradeResult:
         conversion_table_id=table_id,
         tasks=task_grades,
     )
+
+def task_score_for_attempt(
+    db: Session, task: Task, attempt: Attempt
+) -> tuple[int, AttemptCodeSubmission | None]:
+    """единый расчёт балла за задание в попытке"""
+    sub = (
+        db.query(AttemptCodeSubmission)
+        .filter(
+            AttemptCodeSubmission.attempt_id == attempt.id,
+            AttemptCodeSubmission.task_id == task.id,
+        )
+        .first()
+    )
+
+    if task.task_type == TASK_TYPE_CODE:
+        passed = bool(sub and sub.all_passed)
+        return (task.max_score if passed else 0), sub
+
+    answers = {
+        aa.answers_field_id: aa
+        for aa in db.query(AttemptAnswer)
+        .filter(
+            AttemptAnswer.attempt_id == attempt.id,
+            AttemptAnswer.task_id == task.id,
+        )
+        .all()
+    }
+    parts = [
+        (f.points, bool(answers[f.id].is_correct) if f.id in answers else False)
+        for f in task.fields
+    ]
+    return compute_task_score(task.scoring_type, task.max_score, parts), sub

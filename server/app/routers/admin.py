@@ -5,13 +5,18 @@ from ..database import get_db
 from ..dependencies import require_admin
 from ..models import User
 from ..schemas import (
+    AdminCodeTestOut,
     AdminFieldOut,
     AdminTaskOut,
+    CodeRunOut,
+    CodeTestIn,
+    CodeTestPatchIn,
     ConversionTableCreateIn,
     ConversionTableOut,
     ConversionTablePatchIn,
     FieldCreateIn,
     FieldPatchIn,
+    RunReferenceIn,
     SettingsOut,
     SettingsPatchIn,
     TaskCreateIn,
@@ -234,3 +239,43 @@ def activate_conversion_table(
     db: Session = Depends(get_db),
 ):
     return ac.activate_conversion_table(db, admin, table_id)
+
+
+@router.post("/tasks/{task_id}/tests", response_model=AdminCodeTestOut)
+def create_code_test(
+    task_id: int,
+    payload: CodeTestIn,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    return ac.create_code_test(db, admin, task_id, payload)
+
+
+@router.patch("/code-tests/{test_id}", response_model=AdminCodeTestOut)
+def patch_code_test(
+    test_id: int,
+    payload: CodeTestPatchIn,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    return ac.patch_code_test(db, admin, test_id, payload)
+
+
+@router.delete("/code-tests/{test_id}")
+def delete_code_test(
+    test_id: int,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    deleted = ac.delete_code_test(db, admin, test_id)
+    return {"deleted": deleted}
+
+
+@router.post("/tasks/{task_id}/run-reference", response_model=CodeRunOut)
+def run_reference(
+    task_id: int,
+    payload: RunReferenceIn,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    return ac.run_reference_solution(db, task_id, payload)

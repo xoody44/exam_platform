@@ -22,17 +22,22 @@ import {
 import { PlusOutlined, UploadOutlined } from '@ant-design/icons'
 import api from '../api/client'
 import type { AdminField, AdminTask, VariantDetail } from '../api/types'
+import CodeTestsEditor from '../components/CodeTestsEditor'
 
 const scoringTypeOptions = [
   { value: 'all_or_nothing', label: 'Всё или ничего' },
   { value: 'partial_sum', label: 'Частичный балл (только задания 26 и 27)' },
 ]
 
+const taskTypeOptions = [
+  { value: 'answer', label: 'Поля ответов (ЕГЭ)' },
+  { value: 'code', label: 'Программа (Python / C#)' },
+]
+
 function formatSize(bytes: number): string {
   if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} МБ`
   return `${(bytes / 1024).toFixed(1)} КБ`
 }
-
 
 function TaskEditorModal({
   open,
@@ -48,6 +53,7 @@ function TaskEditorModal({
   onSaved: () => void
 }) {
   const [form] = Form.useForm()
+  const taskType = Form.useWatch('task_type', form)
 
   useEffect(() => {
     if (!open) return
@@ -61,19 +67,34 @@ function TaskEditorModal({
         teacher_comment: task.teacher_comment,
         max_score: task.max_score,
         scoring_type: task.scoring_type,
+        task_type: task.task_type ?? 'answer',
       })
     } else {
       form.resetFields()
-      form.setFieldsValue({ max_score: 1, scoring_type: 'all_or_nothing' })
+      form.setFieldsValue({
+        max_score: 1,
+        scoring_type: 'all_or_nothing',
+        task_type: 'answer',
+      })
     }
   }, [open, task, form])
 
+  // Для программных заданий частичный балл недоступен
+  const scoringOptions =
+    taskType === 'code'
+      ? scoringTypeOptions.filter((o) => o.value === 'all_or_nothing')
+      : scoringTypeOptions
+
   const onFinish = async (values: Record<string, unknown>) => {
+    const payload = { ...values }
+    if (payload.task_type === 'code') {
+      payload.scoring_type = 'all_or_nothing'
+    }
     try {
       if (task) {
-        await api.patch(`/admin/tasks/${task.id}`, values)
+        await api.patch(`/admin/tasks/${task.id}`, payload)
       } else {
-        await api.post(`/admin/variants/${variantId}/tasks`, values)
+        await api.post(`/admin/variants/${variantId}/tasks`, payload)
       }
       message.success('Задание сохранено')
       onSaved()
@@ -122,21 +143,33 @@ function TaskEditorModal({
 
         <Row gutter={16}>
           <Col span={8}>
+            <Form.Item name="task_type" label="Тип задания">
+              <Select options={taskTypeOptions} />
+            </Form.Item>
+          </Col>
+          <Col span={8}>
             <Form.Item name="max_score" label="Максимальный балл">
               <InputNumber min={0} max={4} style={{ width: '100%' }} />
             </Form.Item>
           </Col>
-          <Col span={16}>
+          <Col span={8}>
             <Form.Item name="scoring_type" label="Тип проверки">
-              <Select options={scoringTypeOptions} />
+              <Select options={scoringOptions} />
             </Form.Item>
           </Col>
         </Row>
+
+        {taskType === 'code' && (
+          <Typography.Text type="secondary">
+            Программное задание оценивается «всё или ничего» по тестам: поля ответов не
+            используются. Тесты (вход / ожидаемый вывод) добавляются в карточке задания
+            после его сохранения.
+          </Typography.Text>
+        )}
       </Form>
     </Modal>
   )
 }
-
 
 function FieldEditorModal({
   open,
@@ -240,7 +273,6 @@ function FieldEditorModal({
   )
 }
 
-
 export default function VariantDetailPage() {
   const { id } = useParams()
   const variantId = Number(id)
@@ -270,6 +302,7 @@ export default function VariantDetailPage() {
 
   useEffect(() => {
     load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [variantId])
 
   const archiveTask = async (taskId: number) => {
@@ -359,6 +392,7 @@ export default function VariantDetailPage() {
 
         {variant.tasks.map((task) => {
           const taskEditable = variantEditable && !task.archived_at
+          const isCode = task.task_type === 'code'
           return (
             <Card
               key={task.id}
@@ -369,9 +403,13 @@ export default function VariantDetailPage() {
                   <Tag color="blue">№{task.number}</Tag>
                   <span>{task.title}</span>
                   <Tag>{task.max_score} б.</Tag>
-                  <Tag color={task.scoring_type === 'partial_sum' ? 'geekblue' : 'default'}>
-                    {task.scoring_type === 'partial_sum' ? 'частичный балл' : 'всё или ничего'}
-                  </Tag>
+                  {isCode ? (
+                    <Tag color="purple">программа</Tag>
+                  ) : (
+                    <Tag color={task.scoring_type === 'partial_sum' ? 'geekblue' : 'default'}>
+                      {task.scoring_type === 'partial_sum' ? 'частичный балл' : 'всё или ничего'}
+                    </Tag>
+                  )}
                   {task.archived_at && <Tag color="default">архив</Tag>}
                 </Space>
               }
@@ -392,52 +430,61 @@ export default function VariantDetailPage() {
                 </Typography.Paragraph>
               )}
 
-              {/* Поля ответов */}
-              <Typography.Text strong>Поля ответов:</Typography.Text>
-              <Table<AdminField>
-                rowKey="id"
-                size="small"
-                pagination={false}
-                dataSource={task.fields}
-                style={{ marginTop: 8 }}
-                columns={[
-                  { title: 'Код', dataIndex: 'code', width: 120 },
-                  { title: 'Подпись', dataIndex: 'label' },
-                  {
-                    title: 'Тип',
-                    dataIndex: 'input_type',
-                    width: 100,
-                    render: (v: string) => (v === 'number' ? 'число' : 'строка'),
-                  },
-                  { title: 'Баллы', dataIndex: 'points', width: 80 },
-                  { title: 'Правильный ответ', dataIndex: 'expected_answer' },
-                  {
-                    title: '',
-                    key: 'actions',
-                    width: 140,
-                    render: (_v, f) =>
-                      taskEditable && (
-                        <Space>
-                          <a onClick={() => setFieldModal({ open: true, task, field: f })}>ред.</a>
-                          <Popconfirm title="Удалить поле?" onConfirm={() => deleteField(f.id)}>
-                            <a>удалить</a>
-                          </Popconfirm>
-                        </Space>
-                      ),
-                  },
-                ]}
-              />
-              {taskEditable && (
-                <Button
-                  size="small"
-                  style={{ marginTop: 8 }}
-                  onClick={() => setFieldModal({ open: true, task, field: null })}
-                >
-                  + Добавить поле
-                </Button>
+              {/* Поля ответов — только для заданий типа answer */}
+              {!isCode && (
+                <>
+                  <Typography.Text strong>Поля ответов:</Typography.Text>
+                  <Table<AdminField>
+                    rowKey="id"
+                    size="small"
+                    pagination={false}
+                    dataSource={task.fields}
+                    style={{ marginTop: 8 }}
+                    columns={[
+                      { title: 'Код', dataIndex: 'code', width: 120 },
+                      { title: 'Подпись', dataIndex: 'label' },
+                      {
+                        title: 'Тип',
+                        dataIndex: 'input_type',
+                        width: 100,
+                        render: (v: string) => (v === 'number' ? 'число' : 'строка'),
+                      },
+                      { title: 'Баллы', dataIndex: 'points', width: 80 },
+                      { title: 'Правильный ответ', dataIndex: 'expected_answer' },
+                      {
+                        title: '',
+                        key: 'actions',
+                        width: 140,
+                        render: (_v, f) =>
+                          taskEditable && (
+                            <Space>
+                              <a onClick={() => setFieldModal({ open: true, task, field: f })}>ред.</a>
+                              <Popconfirm title="Удалить поле?" onConfirm={() => deleteField(f.id)}>
+                                <a>удалить</a>
+                              </Popconfirm>
+                            </Space>
+                          ),
+                      },
+                    ]}
+                  />
+                  {taskEditable && (
+                    <Button
+                      size="small"
+                      style={{ marginTop: 8 }}
+                      onClick={() => setFieldModal({ open: true, task, field: null })}
+                    >
+                      + Добавить поле
+                    </Button>
+                  )}
+                </>
               )}
 
-              {/* Файлы */}
+              {/* Тесты кода — только для заданий типа code */}
+              {isCode && (
+                <CodeTestsEditor taskId={task.id} tests={task.tests ?? []} onChanged={load} />
+              )}
+
+              {/* Файлы — доступны обоим типам */}
               <div style={{ marginTop: 16 }}>
                 <Typography.Text strong>Файлы:</Typography.Text>
                 <div style={{ marginTop: 8 }}>

@@ -60,6 +60,7 @@ async def lifespan(app: FastAPI):
     logger = logging.getLogger("exam.main")
 
     Base.metadata.create_all(bind=engine)
+    ensure_schema()
 
     db = SessionLocal()
     try:
@@ -87,6 +88,25 @@ async def lifespan(app: FastAPI):
         _open_browser_after_delay(f"http://127.0.0.1:{settings.server_port}/")
 
     yield
+
+
+def ensure_schema() -> None:
+    from sqlalchemy import inspect, text
+
+    from .database import engine
+
+    insp = inspect(engine)
+    if not insp.has_table("tasks"):
+        return
+    columns = {c["name"] for c in insp.get_columns("tasks")}
+    additions = {
+        "task_type": "VARCHAR(20) NOT NULL DEFAULT 'answer'",
+    }
+    with engine.begin() as conn:
+        for name, ddl in additions.items():
+            if name not in columns:
+                conn.execute(text(f"ALTER TABLE tasks ADD COLUMN {name} {ddl}"))
+                logger.info("авто-миграция: добавлена колонка tasks.%s", name)
 
 
 def create_app() -> FastAPI:

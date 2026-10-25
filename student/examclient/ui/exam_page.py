@@ -8,6 +8,8 @@ from PyQt6.QtWidgets import (
     QScrollArea,
     QVBoxLayout,
     QWidget,
+    QComboBox,
+    QPlainTextEdit,
 )
 
 from ..session import SessionState
@@ -18,6 +20,8 @@ class ExamPage(QWidget):
     task_opened = pyqtSignal(object)
     finish_requested = pyqtSignal()
     download_requested = pyqtSignal(int, str)
+    code_changed = pyqtSignal(int, str, str)
+    code_check_requested = pyqtSignal(int)
 
     def __init__(self, session: SessionState):
         super().__init__()
@@ -89,6 +93,8 @@ class ExamPage(QWidget):
 
         root.addWidget(body, 1)
 
+        self._code_widgets = None
+
     def populate(self) -> None:
         while self.nav_layout.count():
             item = self.nav_layout.takeAt(0)
@@ -154,11 +160,17 @@ class ExamPage(QWidget):
         )
 
     def _clear_content(self) -> None:
-        while self.content_layout.count():
-            item = self.content_layout.takeAt(0)
-            widget = item.widget()
-            if widget is not None:
-                widget.deleteLater()
+        def clear_layout(layout) -> None:
+            while layout.count():
+                item = layout.takeAt(0)
+                if item.widget() is not None:
+                    item.widget().deleteLater()
+                elif item.layout() is not None:
+                    clear_layout(item.layout())
+                    item.layout().deleteLater()
+
+        clear_layout(self.content_layout)
+        self._code_widgets = None
 
     def _render_instruction(self) -> None:
         label = QLabel(self.session.instruction or "Инструкция не задана.")
@@ -190,6 +202,10 @@ class ExamPage(QWidget):
         ):
             text = task.get(key)
             if text:
+                if task.get("task_type") == "code":
+                    self._render_code_block(task)
+                    self.content_layout.addStretch()
+                    return
                 head = QLabel(caption)
                 head.setObjectName("section")
                 body = QLabel(text)
@@ -245,3 +261,103 @@ class ExamPage(QWidget):
         self.finish_button.setEnabled(not busy)
         for button in self.nav_buttons:
             button.setEnabled(not busy)
+
+    def _render_code_block(self, task: dict) -> None:
+        from PyQt6.QtGui import QFont
+
+        public_tests = task.get("public_tests", [])
+        if public_tests:
+            head = QLabel("Открытые тесты")
+            head.setObjectName("section")
+            self.content_layout.addWidget(head)
+            for t in public_tests:
+                box = QLabel(
+                    f"{t['name']}\nВход:\n{t['stdin_text'] or '(пусто)'}\n"
+                    f"Ожидаемый вывод:\n{t['expected_stdout_text'] or '(пусто)'}"
+                )
+                box.setWordWrap(True)
+                box.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+                box.setStyleSheet(
+                    "background-color: #1e1e1e; padding: 8px; border-radius: 4px;"
+                )
+                self.content_layout.addWidget(box)
+
+        head = QLabel("Код решения")
+        head.setObjectName("section")
+        self.content_layout.addWidget(head)
+
+        state = self.session.get_code(task["id"])
+
+        lang_row = QHBoxLayout()
+        lang_row.addWidget(QLabel("Язык:"))
+        combo = QComboBox()
+        combo.addItems(["python", "csharp"])
+        combo.setCurrentText(state["language"])
+        combo.currentTextChanged.connect(lambda _t, tid=task["id"]: self._on_code_edit(tid))
+        lang_row.addWidget(combo)
+        lang_row.addStretch(1)
+        self.content_layout.addLayout(lang_row)
+
+        editor = QPlainTextEdit()
+        editor.setObjectName("codeEditor")
+        font = QFont("Consolas", 10)
+        font.setFixedPitch(True)
+        editor.setFont(font)
+        editor.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        editor.setMinimumHeight(260)
+        editor.setPlainText(state["source"])
+        editor.textChanged.connect(lambda tid=task["id"]: self._on_code_edit(tid))
+        self.content_layout.addWidget(editor)
+
+        check_button = QPushButton("Отправить на проверку")
+        check_button.clicked.connect(
+            lambda _c, tid=task["id"]: self.code_check_requested.emit(tid)
+        )
+        self.content_layout.addWidget(check_button)
+
+        self.results_label = QLabel("")
+        self.results_label.setWordWrap(True)
+        self.results_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.content_layout.addWidget(self.results_label)
+
+        self._code_widgets = {"task_id": task["id"], "combo": combo, "editor": editor}
+
+    def _on_code_edit(self, task_id: int) -> None:
+        w = getattr(self, "_code_widgets", None)
+        if not w or w["task_id"] != task_id:
+            return
+        state = self.session.get_code(task_id)
+        state["language"] = w["combo"].currentText()
+        state["source"] = w["editor"].toPlainText()
+        state["dirty"] = True
+        self.code_changed.emit(task_id, state["language"], state["source"])
+
+    def current_code_state(self, task_id: int) -> dict | None:
+        w = getattr(self, "_code_widgets", None)
+        if not w or w["task_id"] != task_id:
+            return None
+        state = self.session.get_code(task_id)
+        state["language"] = w["combo"].currentText()
+        state["source"] = w["editor"].toPlainText()
+        return state
+
+    def set_code_results(self, task_id: int, results: list[dict], all_passed: bool | None) -> None:
+        w = getattr(self, "_code_widgets", None)
+        if not w or w["task_id"] != task_id:
+            return
+        status_ru = {
+            "passed": "пройден",
+            "wrong_answer": "неверный ответ",
+            "runtime_error": "ошибка выполнения - тест не пройден",
+            "timeout": "превышено время - тест не пройден",
+            "compile_error": "ошибка компиляции - тесты не пройдены",
+        }
+        lines = [
+            f"{'Y' if r['passed'] else 'X'} {r['name']}: {status_ru.get(r['status'], r['status'])}"
+            for r in results
+        ]
+        if all_passed is True:
+            lines.append("Все тесты пройдены: задание будет зачтено при завершении.")
+        elif all_passed is False:
+            lines.append("Не все тесты пройдены.")
+        self.results_label.setText("\n".join(lines))

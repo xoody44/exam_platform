@@ -1,5 +1,5 @@
 {
-  "server_url": "http://192.168.0.105:8000",
+  "server_url": "http://192.168.0.106:8000",
   "machine_id": "pc-01",
   "autosave_seconds": 20,
   "sync_seconds": 30,
@@ -7,9 +7,19 @@
     "enabled": true,
     "poll_ms": 800,
     "blacklist": [
-      "chrome.exe", "msedge.exe", "firefox.exe", "opera.exe", "browser.exe",
-      "yandex.exe", "yandexbrowser.exe", "brave.exe", "vivaldi.exe",
-      "iexplore.exe", "tor.exe", "waterfox.exe", "palemoon.exe"
+      "chrome.exe",
+      "msedge.exe",
+      "firefox.exe",
+      "opera.exe",
+      "browser.exe",
+      "yandex.exe",
+      "yandexbrowser.exe",
+      "brave.exe",
+      "vivaldi.exe",
+      "iexplore.exe",
+      "tor.exe",
+      "waterfox.exe",
+      "palemoon.exe"
     ]
   }
 }
