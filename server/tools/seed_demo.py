@@ -90,7 +90,9 @@ def seed_demo(db: Session) -> None:
         db.add(task)
         db.flush()
 
-        for order, (code, label, input_type, points, expected) in enumerate(fields, start=1):
+        for order, (code, label, input_type, points, expected) in enumerate(
+            fields, start=1
+        ):
             db.add(
                 AnswerField(
                     task_id=task.id,

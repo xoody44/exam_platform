@@ -22,11 +22,14 @@ def get_token_payload(
         raise unauthorized("отсутствует заголовок Authorization")
 
     token = credentials.credentials.strip()
-    logger.info("получен токен длиной %d символов, начинается с %s...", len(token), token[:20])
+    logger.info(
+        "получен токен длиной %d символов, начинается с %s...", len(token), token[:20]
+    )
 
     payload = decode_access_token(token)
     if payload is None:
         from .config import get_settings
+
         s = get_settings()
         logger.error(
             "токен не прошёл проверку. Секрет сервера: %s...%s",
@@ -35,7 +38,9 @@ def get_token_payload(
         )
         raise unauthorized("токен недействителен или истёк")
 
-    logger.info("токен расшифрован: sub=%s, role=%s", payload.get("sub"), payload.get("role"))
+    logger.info(
+        "токен расшифрован: sub=%s, role=%s", payload.get("sub"), payload.get("role")
+    )
     return payload
 
 
@@ -65,7 +70,11 @@ def require_student(
 
     uid = payload.get("uid")
     logger.info("require_student: payload=%s", payload)
-    logger.info("require_student: uid=%s, type=%s", uid, type(uid).__name__ if uid is not None else "None")
+    logger.info(
+        "require_student: uid=%s, type=%s",
+        uid,
+        type(uid).__name__ if uid is not None else "None",
+    )
 
     student = db.get(Student, int(uid)) if uid is not None else None
     logger.info("require_student: db.get result = %s", student)

@@ -232,7 +232,7 @@ class TaskResultOut(BaseModel):
     score: int | None
     max_score: int
     answers: list[StudentAnswerOut] = []
-    code: CodeSubmissionOut | None = None 
+    code: CodeSubmissionOut | None = None
 
 
 class ScoresOut(BaseModel):
@@ -325,7 +325,7 @@ class TaskCreateIn(BaseModel):
     teacher_comment: str | None = None
     max_score: int = Field(default=1, ge=0, le=4)
     scoring_type: Literal["all_or_nothing", "partial_sum"] = "all_or_nothing"
-    task_type: Literal ["answer", "code"] = "answer"
+    task_type: Literal["answer", "code"] = "answer"
 
 
 class TaskPatchIn(BaseModel):
@@ -339,7 +339,7 @@ class TaskPatchIn(BaseModel):
     teacher_comment: str | None = None
     max_score: int | None = Field(default=None, ge=0, le=4)
     scoring_type: Literal["all_or_nothing", "partial_sum"] | None = None
-    task_type: Literal ["answer", "code"] | None = None
+    task_type: Literal["answer", "code"] | None = None
 
 
 class AdminTaskOut(BaseModel):
@@ -355,13 +355,13 @@ class AdminTaskOut(BaseModel):
     teacher_comment: str | None
     max_score: int
     scoring_type: str
-    task_type: str = "answer"  
+    task_type: str = "answer"
     created_at: datetime
     updated_at: datetime
     archived_at: datetime | None
     fields: list[AdminFieldOut] = []
     files: list[TaskFileOut] = []
-    tests: list[AdminCodeTestOut] = [] 
+    tests: list[AdminCodeTestOut] = []
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -432,7 +432,6 @@ class SettingsPatchIn(BaseModel):
     python_executable: str | None = None
     csc_path: str | None = None
     code_time_limit_seconds: int | None = Field(default=None, ge=1, le=120)
-    
 
 
 class AttemptListItemOut(BaseModel):

@@ -15,7 +15,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from .config import get_settings
 from .core.netinfo import server_url_for_clients
 from .database import Base, SessionLocal, engine
-from .routers import admin, admin_results, auth, files, public, student
+from .routers import admin, admin_results, auth, files, public, student, admin_delete
 from .services.auth import ensure_default_admin
 from .services.seed import seed_schools
 from .services.settings import seed_settings
@@ -33,7 +33,7 @@ logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 logger = logging.getLogger("exam.server")
 
 
-if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
     WEB_DIST = Path(sys._MEIPASS) / "web" / "dist"
 else:
     WEB_DIST = Path(__file__).resolve().parent.parent.parent / "web" / "dist"
@@ -131,12 +131,12 @@ def create_app() -> FastAPI:
     app.include_router(admin.router)
     app.include_router(files.router)
     app.include_router(admin_results.router)
+    app.include_router(admin_delete.router)
 
     @app.get("/api/health", tags=["service"])
     def health():
         """проверка живости сервера"""
         return {"status": "ok"}
-
 
     if WEB_DIST.exists():
         app.mount(
@@ -144,7 +144,7 @@ def create_app() -> FastAPI:
             StaticFiles(directory=WEB_DIST / "assets"),
             name="spa-assets",
         )
-    
+
         @app.get("/{full_path:path}", include_in_schema=False)
         def spa(full_path: str):
             """раздача собранной админ-панели: файл по пути либо index.html"""
@@ -152,9 +152,9 @@ def create_app() -> FastAPI:
             if full_path and candidate.is_file():
                 return FileResponse(candidate)
             return FileResponse(WEB_DIST / "index.html")
+
     else:
         logger.info("web/dist не найден: SPA не подключена")
-    
 
     @app.exception_handler(SQLAlchemyError)
     async def sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError):

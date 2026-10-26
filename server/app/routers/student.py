@@ -10,7 +10,14 @@ logger = logging.getLogger("exam.router.student")
 
 from ..database import get_db
 from ..dependencies import require_student
-from ..models import STATUS_IN_PROGRESS, TASK_TYPE_CODE, AttemptCodeSubmission, CodeTest, Student, Task
+from ..models import (
+    STATUS_IN_PROGRESS,
+    TASK_TYPE_CODE,
+    AttemptCodeSubmission,
+    CodeTest,
+    Student,
+    Task,
+)
 from ..schemas import (
     AttemptResultOut,
     AttemptStateOut,
@@ -43,8 +50,11 @@ def start_attempt(
     db: Session = Depends(get_db),
 ):
     """начать попытку: выбирает вариант и создаёт Attempt"""
-    logger.info("POST /api/student/attempts/start вызван student=%s machine=%s",
-                student.id, payload.machine_id)
+    logger.info(
+        "POST /api/student/attempts/start вызван student=%s machine=%s",
+        student.id,
+        payload.machine_id,
+    )
     return attempt_service.start_attempt(db, student, payload.machine_id)
 
 
@@ -137,9 +147,7 @@ def submit_code(
         .first()
     )
     if submission is None:
-        submission = AttemptCodeSubmission(
-            attempt_id=attempt.id, task_id=task.id
-        )
+        submission = AttemptCodeSubmission(attempt_id=attempt.id, task_id=task.id)
         db.add(submission)
     submission.language = payload.language
     submission.source_code = payload.source_code
@@ -165,7 +173,9 @@ def submit_code(
         source=payload.source_code,
         tests=tests,
     )
-    submission.results_json = json.dumps([r.to_dict() for r in results], ensure_ascii=False)
+    submission.results_json = json.dumps(
+        [r.to_dict() for r in results], ensure_ascii=False
+    )
     submission.all_passed = bool(results) and all(r.passed for r in results)
     db.commit()
 
@@ -175,7 +185,7 @@ def submit_code(
                 test_id=r.test_id, name=r.name, status=r.status, passed=r.passed
             )
             for r in results
-        ],  
+        ],
         all_passed=submission.all_passed,
         compile_log=None,
     )

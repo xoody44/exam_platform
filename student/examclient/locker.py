@@ -37,7 +37,9 @@ class BrowserLockerThread(QThread):
     def start_lock(self) -> None:
         if self.isRunning():
             return
-        self._log(f"lock START blacklist={sorted(self._blacklist)} poll_ms={self._poll_ms}")
+        self._log(
+            f"lock START blacklist={sorted(self._blacklist)} poll_ms={self._poll_ms}"
+        )
         self.start()
 
     def stop_lock(self, reason: str) -> None:

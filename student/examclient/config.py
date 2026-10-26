@@ -5,11 +5,28 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 DEFAULT_BROWSER_BLACKLIST = [
-    "chrome.exe", "msedge.exe", "firefox.exe", "opera.exe", "browser.exe",
-    "yandex.exe", "yandexbrowser.exe", "brave.exe", "vivaldi.exe",
-    "iexplore.exe", "tor.exe", "waterfox.exe", "palemoon.exe", "epic.exe",
-    "arc.exe", "maxthon.exe", "360se.exe", "360chrome.exe", "qqbrowser.exe",
-    "ucbrowser.exe", "whale.exe", "sleipnir.exe",
+    "chrome.exe",
+    "msedge.exe",
+    "firefox.exe",
+    "opera.exe",
+    "browser.exe",
+    "yandex.exe",
+    "yandexbrowser.exe",
+    "brave.exe",
+    "vivaldi.exe",
+    "iexplore.exe",
+    "tor.exe",
+    "waterfox.exe",
+    "palemoon.exe",
+    "epic.exe",
+    "arc.exe",
+    "maxthon.exe",
+    "360se.exe",
+    "360chrome.exe",
+    "qqbrowser.exe",
+    "ucbrowser.exe",
+    "whale.exe",
+    "sleipnir.exe",
 ]
 
 

@@ -57,7 +57,6 @@ def _paginate(total: int, page: int, per_page: int) -> PaginatedOut:
     )
 
 
-
 def get_dashboard(db: Session) -> DashboardOut:
     """счётчики для главного экрана админ-панели"""
     students_count = db.query(Student).count()
@@ -79,7 +78,6 @@ def get_dashboard(db: Session) -> DashboardOut:
         attempts_aborted=aborted,
         variants_active=variants_active,
     )
-
 
 
 def list_attempts(
@@ -169,7 +167,6 @@ def list_attempts(
         items=items,
         pagination=_paginate(total, page, per_page),
     )
-
 
 
 def get_attempt_detail(db: Session, attempt_id: int) -> AttemptDetailOut:
@@ -282,12 +279,12 @@ def get_attempt_detail(db: Session, attempt_id: int) -> AttemptDetailOut:
 
     except Exception as exc:
         import sys
+
         tb = traceback.format_exc()
         print(f"ERROR in get_attempt_detail: {exc}", file=sys.stderr)
         print(f"TRACEBACK:\n{tb}", file=sys.stderr)
         sys.stderr.flush()
         raise
-
 
 
 def list_students(
@@ -352,7 +349,6 @@ def list_students(
         items=items,
         pagination=_paginate(total, page, per_page),
     )
-
 
 
 def get_stats(db: Session) -> StatsOut:

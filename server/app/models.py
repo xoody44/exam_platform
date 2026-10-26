@@ -18,7 +18,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
 
-
 SCORING_ALL_OR_NOTHING = "all_or_nothing"
 SCORING_PARTIAL_SUM = "partial_sum"
 
@@ -342,6 +341,7 @@ class Machine(Base):
 
 class CodeTest(Base):
     """тест для программного задания: stdin -> ожидаемый stdout."""
+
     __tablename__ = "code_tests"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -360,6 +360,7 @@ class CodeTest(Base):
 
 class AttemptCodeSubmission(Base):
     """код ученика в попытке + результаты последней проверки."""
+
     __tablename__ = "attempt_code_submissions"
     __table_args__ = (
         UniqueConstraint("attempt_id", "task_id", name="uq_attempt_task_code"),

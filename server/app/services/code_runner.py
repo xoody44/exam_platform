@@ -122,6 +122,7 @@ def resolve_csc(db) -> str | None:
             return c
     return None
 
+
 def _run_one(
     cmd: list[str], input_bytes: bytes, cwd: Path, timeout: float
 ) -> tuple[str, bytes | None]:
@@ -160,10 +161,7 @@ def run_code_tests(
 
     def fail_all(status: str, log: str | None = None):
         return (
-            [
-                TestResult(t.id, t.sort_order, t.name, status, False)
-                for t in tests
-            ],
+            [TestResult(t.id, t.sort_order, t.name, status, False) for t in tests],
             log,
         )
 
@@ -174,14 +172,18 @@ def run_code_tests(
         if language == LANG_PYTHON:
             python = resolve_python(db)
             if python is None:
-                return fail_all(TEST_COMPILE_ERROR, "На сервере не настроен python_executable")
+                return fail_all(
+                    TEST_COMPILE_ERROR, "На сервере не настроен python_executable"
+                )
             (workdir / "prog.py").write_text(source, encoding="utf-8")
             cmd = [python, "-I", "-B", "prog.py"]
 
         elif language == LANG_CSHARP:
             csc = resolve_csc(db)
             if csc is None:
-                return fail_all(TEST_COMPILE_ERROR, "На сервере не найден компилятор C# (csc.exe)")
+                return fail_all(
+                    TEST_COMPILE_ERROR, "На сервере не найден компилятор C# (csc.exe)"
+                )
             (workdir / "prog.cs").write_text(source, encoding="utf-8")
             try:
                 comp = subprocess.run(
@@ -208,7 +210,9 @@ def run_code_tests(
             )
             if status == TEST_PASSED:
                 stdout = _decode_output(raw or b"", language)
-                ok = _normalize_output(stdout) == _normalize_output(t.expected_stdout_text)
+                ok = _normalize_output(stdout) == _normalize_output(
+                    t.expected_stdout_text
+                )
                 status = TEST_PASSED if ok else TEST_WRONG_ANSWER
             results.append(
                 TestResult(t.id, t.sort_order, t.name, status, status == TEST_PASSED)
@@ -216,4 +220,3 @@ def run_code_tests(
         return results, None
     finally:
         shutil.rmtree(workdir, ignore_errors=True)
-        

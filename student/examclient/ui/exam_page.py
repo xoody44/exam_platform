@@ -206,7 +206,9 @@ class ExamPage(QWidget):
                 head.setObjectName("section")
                 body = QLabel(text)
                 body.setWordWrap(True)
-                body.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+                body.setTextInteractionFlags(
+                    Qt.TextInteractionFlag.TextSelectableByMouse
+                )
                 self.content_layout.addWidget(head)
                 self.content_layout.addWidget(body)
 
@@ -219,8 +221,9 @@ class ExamPage(QWidget):
                 button = QPushButton(f"Скачать: {f['original_name']}")
                 button.setObjectName("secondary")
                 button.clicked.connect(
-                    lambda _checked, fid=f["id"], name=f["original_name"]:
-                    self.download_requested.emit(fid, name)
+                    lambda _checked, fid=f["id"], name=f[
+                        "original_name"
+                    ]: self.download_requested.emit(fid, name)
                 )
                 self.content_layout.addWidget(button)
 
@@ -237,7 +240,9 @@ class ExamPage(QWidget):
                         f"Ожидаемый выход:\n{t['expected_stdout_text']}"
                     )
                     body.setWordWrap(True)
-                    body.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+                    body.setTextInteractionFlags(
+                        Qt.TextInteractionFlag.TextSelectableByMouse
+                    )
                     self.content_layout.addWidget(body)
 
             self._render_code_block(task)
@@ -289,7 +294,9 @@ class ExamPage(QWidget):
                     f"Ожидаемый вывод:\n{t['expected_stdout_text'] or '(пусто)'}"
                 )
                 box.setWordWrap(True)
-                box.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+                box.setTextInteractionFlags(
+                    Qt.TextInteractionFlag.TextSelectableByMouse
+                )
                 box.setStyleSheet(
                     "background-color: #1e1e1e; padding: 8px; border-radius: 4px;"
                 )
@@ -306,7 +313,9 @@ class ExamPage(QWidget):
         combo = QComboBox()
         combo.addItems(["python", "csharp"])
         combo.setCurrentText(state["language"])
-        combo.currentTextChanged.connect(lambda _t, tid=task["id"]: self._on_code_edit(tid))
+        combo.currentTextChanged.connect(
+            lambda _t, tid=task["id"]: self._on_code_edit(tid)
+        )
         lang_row.addWidget(combo)
         lang_row.addStretch(1)
         self.content_layout.addLayout(lang_row)
@@ -330,7 +339,9 @@ class ExamPage(QWidget):
 
         self.results_label = QLabel("")
         self.results_label.setWordWrap(True)
-        self.results_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.results_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
         self.content_layout.addWidget(self.results_label)
 
         self._code_widgets = {"task_id": task["id"], "combo": combo, "editor": editor}
@@ -354,7 +365,9 @@ class ExamPage(QWidget):
         state["source"] = w["editor"].toPlainText()
         return state
 
-    def set_code_results(self, task_id: int, results: list[dict], all_passed: bool | None) -> None:
+    def set_code_results(
+        self, task_id: int, results: list[dict], all_passed: bool | None
+    ) -> None:
         w = getattr(self, "_code_widgets", None)
         if not w or w["task_id"] != task_id:
             return

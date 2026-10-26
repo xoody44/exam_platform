@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Card, Form, Input, Select, Space, Button, Table } from 'antd'
+import { Button, Card, Form, Input, message, Popconfirm, Select, Space, Table } from 'antd'
 import api from '../api/client'
 import type { AttemptListItem, AttemptsList, School, StudentWithAttempts, StudentsList } from '../api/types'
 import { formatDateTime } from '../utils/format'
@@ -50,29 +50,57 @@ export default function StudentsPage() {
     api.get<School[]>('/public/schools').then((r) => setSchools(r.data)).catch(() => {})
   }, [])
 
-  useEffect(() => {
-    let alive = true
-    const load = async () => {
-      setLoading(true)
-      try {
-        const { data } = await api.get<StudentsList>('/admin/students', {
-          params: { page, per_page: perPage, ...filters },
-        })
-        if (!alive) return
-        setItems(data.items)
-        setTotal(data.pagination.total)
-      } catch {
-        // игнорируем сетевые сбои
-      } finally {
-        if (alive) setLoading(false)
-      }
+  const load = async () => {
+    setLoading(true)
+    try {
+      const { data } = await api.get<StudentsList>('/admin/students', {
+        params: { page, per_page: perPage, ...filters },
+      })
+      setItems(data.items)
+      setTotal(data.pagination.total)
+    } catch {
+    } finally {
+      setLoading(false)
     }
+  }
+
+  useEffect(() => {
     load()
-    return () => { alive = false }
   }, [page, perPage, filters])
 
+  const removeStudent = async (id: number) => {
+    try {
+      await api.delete(`/admin/students/${id}`)
+      message.success('ученик и его попытки удалены')
+      load()
+    } catch (e: any) {
+      message.error(e.response?.data?.detail ?? 'ошибка удаления')
+    }
+  }
+
+  const removeAll = async () => {
+    try {
+      const { data } = await api.delete<{ students_deleted: number; attempts_deleted: number }>('/admin/students')
+      message.success(`удалено учеников: ${data.students_deleted}, попыток: ${data.attempts_deleted}`)
+      load()
+    } catch (e: any) {
+      message.error(e.response?.data?.detail ?? 'ошибка удаления')
+    }
+  }
+
   return (
-    <Card title="Ученики">
+    <Card
+      title="ученики"
+      extra={
+        <Popconfirm
+          title="Удалить ВСЕХ учеников и ВСЕ попытки? Действие необратимо."
+          okType="danger"
+          onConfirm={removeAll}
+        >
+          <Button danger>Удалить всех учеников</Button>
+        </Popconfirm>
+      }
+    >
       <Form
         form={form}
         layout="inline"
@@ -131,6 +159,20 @@ export default function StudentsPage() {
             dataIndex: 'best_primary_score',
             width: 150,
             render: (v: number | null) => v ?? '-',
+          },
+          {
+            title: '',
+            key: 'actions',
+            width: 90,
+            render: (_v, r) => (
+              <Popconfirm
+                title="Удалить ученика и все его попытки?"
+                onConfirm={() => removeStudent(r.id)}
+                okType="danger"
+              >
+                <a>удалить</a>
+              </Popconfirm>
+            ),
           },
         ]}
       />

@@ -52,9 +52,19 @@ from .audit import log_action
 from .settings import apply_settings_patch, get_setting, get_settings_out
 
 ALLOWED_EXTENSIONS = {
-    "txt", "doc", "docx", "xls", "xlsx", "csv", "odt", "png", "jpg", "jpeg",
+    "txt",
+    "doc",
+    "docx",
+    "xls",
+    "xlsx",
+    "csv",
+    "odt",
+    "png",
+    "jpg",
+    "jpeg",
 }
 PARTIAL_SUM_ALLOWED_NUMBERS = {26, 27}
+
 
 def _variant_or_404(db: Session, variant_id: int) -> Variant:
     """возвращает вариант или ошибку 404"""
@@ -63,6 +73,7 @@ def _variant_or_404(db: Session, variant_id: int) -> Variant:
         raise not_found("Вариант не найден")
     return variant
 
+
 def _task_or_404(db: Session, task_id: int) -> Task:
     """возвращает задание или ошибку 404"""
     task = db.get(Task, task_id)
@@ -70,12 +81,14 @@ def _task_or_404(db: Session, task_id: int) -> Task:
         raise not_found("Задание не найдено")
     return task
 
+
 def _field_or_404(db: Session, field_id: int) -> AnswerField:
     """возвращает поле ответа или ошибку 404"""
     field = db.get(AnswerField, field_id)
     if field is None:
         raise not_found("Поле ответа не найдено")
     return field
+
 
 def variant_has_finished_attempts(db: Session, variant_id: int) -> bool:
     """есть ли у варианта завершённые попытки (контент такого варианта защищён от правок)"""
@@ -89,10 +102,15 @@ def variant_has_finished_attempts(db: Session, variant_id: int) -> bool:
         is not None
     )
 
+
 def _check_partial_sum_rules(number: int, scoring_type: str) -> None:
     """разрешает частичный балл только для заданий 26 и 27"""
-    if scoring_type == SCORING_PARTIAL_SUM and number not in PARTIAL_SUM_ALLOWED_NUMBERS:
+    if (
+        scoring_type == SCORING_PARTIAL_SUM
+        and number not in PARTIAL_SUM_ALLOWED_NUMBERS
+    ):
         raise bad_request("частичный балл разрешён только для заданий 26 и 27")
+
 
 def _load_task(db: Session, task_id: int) -> Task:
     """загружает задание вместе с полями и файлами"""
@@ -135,7 +153,9 @@ def create_variant(db: Session, user: User, payload: VariantCreateIn) -> Variant
     db.add(variant)
     db.commit()
     db.refresh(variant)
-    log_action(db, user.id, "create_variant", "variant", variant.id, {"title": variant.title})
+    log_action(
+        db, user.id, "create_variant", "variant", variant.id, {"title": variant.title}
+    )
     return _variant_out(db, variant)
 
 
@@ -157,7 +177,10 @@ def get_variant(db: Session, variant_id: int) -> VariantDetailOut:
 
 
 def patch_variant(
-    db: Session, user: User, variant_id: int, payload: VariantPatchIn,
+    db: Session,
+    user: User,
+    variant_id: int,
+    payload: VariantPatchIn,
 ) -> VariantOut:
     """обновляет заголовок и активность варианта; переименование использованного варианта запрещено"""
     variant = _variant_or_404(db, variant_id)
@@ -176,7 +199,14 @@ def patch_variant(
 
     db.commit()
     db.refresh(variant)
-    log_action(db, user.id, "update_variant", "variant", variant.id, payload.model_dump(exclude_unset=True))
+    log_action(
+        db,
+        user.id,
+        "update_variant",
+        "variant",
+        variant.id,
+        payload.model_dump(exclude_unset=True),
+    )
     return _variant_out(db, variant)
 
 
@@ -187,7 +217,9 @@ def archive_variant(db: Session, user: User, variant_id: int) -> VariantOut:
     variant.is_active = False
     db.commit()
     db.refresh(variant)
-    log_action(db, user.id, "archive_variant", "variant", variant.id, {"title": variant.title})
+    log_action(
+        db, user.id, "archive_variant", "variant", variant.id, {"title": variant.title}
+    )
     return _variant_out(db, variant)
 
 
@@ -203,7 +235,14 @@ def unarchive_variant(db: Session, user: User, variant_id: int) -> VariantOut:
 
     db.commit()
     db.refresh(variant)
-    log_action(db, user.id, "unarchive_variant", "variant", variant.id, {"title": variant.title})
+    log_action(
+        db,
+        user.id,
+        "unarchive_variant",
+        "variant",
+        variant.id,
+        {"title": variant.title},
+    )
     return _variant_out(db, variant)
 
 
@@ -220,12 +259,16 @@ def list_tasks(db: Session, variant_id: int) -> list[AdminTaskOut]:
     return [AdminTaskOut.model_validate(t) for t in tasks]
 
 
-def create_task(db: Session, user: User, variant_id: int, payload: TaskCreateIn) -> AdminTaskOut:
+def create_task(
+    db: Session, user: User, variant_id: int, payload: TaskCreateIn
+) -> AdminTaskOut:
     """добавляет задание в вариант с проверкой дубля номера и правил балла"""
     variant = _variant_or_404(db, variant_id)
 
     if variant_has_finished_attempts(db, variant.id):
-        raise conflict("вариант использован в завершённых попытках: добавлять задания нельзя")
+        raise conflict(
+            "вариант использован в завершённых попытках: добавлять задания нельзя"
+        )
 
     _check_partial_sum_rules(payload.number, payload.scoring_type)
 
@@ -251,7 +294,9 @@ def get_task(db: Session, task_id: int) -> AdminTaskOut:
     return AdminTaskOut.model_validate(_load_task(db, task_id))
 
 
-def patch_task(db: Session, user: User, task_id: int, payload: TaskPatchIn) -> AdminTaskOut:
+def patch_task(
+    db: Session, user: User, task_id: int, payload: TaskPatchIn
+) -> AdminTaskOut:
     """частичное обновление задания, недоступное для использованных вариантов"""
     task = _task_or_404(db, task_id)
 
@@ -299,12 +344,16 @@ def archive_task(db: Session, user: User, task_id: int) -> AdminTaskOut:
     return AdminTaskOut.model_validate(_load_task(db, task.id))
 
 
-def create_field(db: Session, user: User, task_id: int, payload: FieldCreateIn) -> AdminFieldOut:
+def create_field(
+    db: Session, user: User, task_id: int, payload: FieldCreateIn
+) -> AdminFieldOut:
     """добавляет поле ответа заданию с проверкой дубля кода"""
     task = _task_or_404(db, task_id)
 
     if variant_has_finished_attempts(db, task.variant_id):
-        raise conflict("задание использовано в завершённых попытках: добавлять поля нельзя")
+        raise conflict(
+            "задание использовано в завершённых попытках: добавлять поля нельзя"
+        )
 
     duplicate = (
         db.query(AnswerField)
@@ -318,11 +367,15 @@ def create_field(db: Session, user: User, task_id: int, payload: FieldCreateIn) 
     db.add(field)
     db.commit()
     db.refresh(field)
-    log_action(db, user.id, "create_field", "answer_field", field.id, {"code": field.code})
+    log_action(
+        db, user.id, "create_field", "answer_field", field.id, {"code": field.code}
+    )
     return AdminFieldOut.model_validate(field)
 
 
-def patch_field(db: Session, user: User, field_id: int, payload: FieldPatchIn) -> AdminFieldOut:
+def patch_field(
+    db: Session, user: User, field_id: int, payload: FieldPatchIn
+) -> AdminFieldOut:
     """обновляет поле ответа, включая ожидаемый ответ и баллы"""
     field = _field_or_404(db, field_id)
     task = _task_or_404(db, field.task_id)
@@ -362,7 +415,9 @@ def delete_field(db: Session, user: User, field_id: int) -> int:
     task = _task_or_404(db, field.task_id)
 
     if variant_has_finished_attempts(db, task.variant_id):
-        raise conflict("задание использовано в завершённых попытках: удалять поля нельзя")
+        raise conflict(
+            "задание использовано в завершённых попытках: удалять поля нельзя"
+        )
 
     db.delete(field)
     db.commit()
@@ -370,7 +425,9 @@ def delete_field(db: Session, user: User, field_id: int) -> int:
     return field_id
 
 
-def upload_file(db: Session, user: User, task_id: int, upload: UploadFile) -> TaskFileOut:
+def upload_file(
+    db: Session, user: User, task_id: int, upload: UploadFile
+) -> TaskFileOut:
     """загружает файл к заданию с проверкой расширения и размера"""
     task = _task_or_404(db, task_id)
 
@@ -413,8 +470,16 @@ def upload_file(db: Session, user: User, task_id: int, upload: UploadFile) -> Ta
     db.refresh(row)
 
     log_action(
-        db, user.id, "upload_file", "task_file", row.id,
-        {"task_id": task.id, "original_name": original_name, "size_bytes": row.size_bytes},
+        db,
+        user.id,
+        "upload_file",
+        "task_file",
+        row.id,
+        {
+            "task_id": task.id,
+            "original_name": original_name,
+            "size_bytes": row.size_bytes,
+        },
     )
     return TaskFileOut.model_validate(row)
 
@@ -427,7 +492,9 @@ def delete_file(db: Session, user: User, file_id: int) -> int:
 
     task = _task_or_404(db, row.task_id)
     if variant_has_finished_attempts(db, task.variant_id):
-        raise conflict("задание использовано в завершённых попытках: удалять файлы нельзя")
+        raise conflict(
+            "задание использовано в завершённых попытках: удалять файлы нельзя"
+        )
 
     path = get_settings().task_files_dir / row.file_path
     if path.exists():
@@ -435,7 +502,14 @@ def delete_file(db: Session, user: User, file_id: int) -> int:
 
     db.delete(row)
     db.commit()
-    log_action(db, user.id, "delete_file", "task_file", file_id, {"original_name": row.original_name})
+    log_action(
+        db,
+        user.id,
+        "delete_file",
+        "task_file",
+        file_id,
+        {"original_name": row.original_name},
+    )
     return file_id
 
 
@@ -447,7 +521,14 @@ def get_settings_view(db: Session) -> SettingsOut:
 def update_settings(db: Session, user: User, payload: SettingsPatchIn) -> SettingsOut:
     """обновляет настройки и пишет действие в аудит"""
     result = apply_settings_patch(db, payload)
-    log_action(db, user.id, "update_settings", "settings", None, payload.model_dump(exclude_unset=True))
+    log_action(
+        db,
+        user.id,
+        "update_settings",
+        "settings",
+        None,
+        payload.model_dump(exclude_unset=True),
+    )
     return result
 
 
@@ -479,7 +560,9 @@ def list_conversion_tables(db: Session) -> list[ConversionTableOut]:
 
 
 def create_conversion_table(
-    db: Session, user: User, payload: ConversionTableCreateIn,
+    db: Session,
+    user: User,
+    payload: ConversionTableCreateIn,
 ) -> ConversionTableOut:
     """создаёт переводную таблицу со строками, новая таблица неактивна"""
     _validate_entries(payload.entries, payload.max_primary)
@@ -504,7 +587,14 @@ def create_conversion_table(
 
     db.commit()
     db.refresh(table)
-    log_action(db, user.id, "create_conversion_table", "conversion_table", table.id, {"name": table.name})
+    log_action(
+        db,
+        user.id,
+        "create_conversion_table",
+        "conversion_table",
+        table.id,
+        {"name": table.name},
+    )
     return ConversionTableOut.model_validate(table)
 
 
@@ -514,7 +604,10 @@ def get_conversion_table(db: Session, table_id: int) -> ConversionTableOut:
 
 
 def patch_conversion_table(
-    db: Session, user: User, table_id: int, payload: ConversionTablePatchIn,
+    db: Session,
+    user: User,
+    table_id: int,
+    payload: ConversionTablePatchIn,
 ) -> ConversionTableOut:
     """обновляет таблицу; entries заменяет целиком, при уменьшении max_primary проверяет старые строки"""
     table = _table_or_404(db, table_id)
@@ -558,11 +651,15 @@ def patch_conversion_table(
 
     db.commit()
     db.refresh(table)
-    log_action(db, user.id, "update_conversion_table", "conversion_table", table.id, data)
+    log_action(
+        db, user.id, "update_conversion_table", "conversion_table", table.id, data
+    )
     return ConversionTableOut.model_validate(table)
 
 
-def activate_conversion_table(db: Session, user: User, table_id: int) -> ConversionTableOut:
+def activate_conversion_table(
+    db: Session, user: User, table_id: int
+) -> ConversionTableOut:
     """делает таблицу активной, деактивируя остальные"""
     table = _table_or_404(db, table_id)
 
@@ -573,7 +670,14 @@ def activate_conversion_table(db: Session, user: User, table_id: int) -> Convers
 
     db.commit()
     db.refresh(table)
-    log_action(db, user.id, "activate_conversion_table", "conversion_table", table.id, {"name": table.name})
+    log_action(
+        db,
+        user.id,
+        "activate_conversion_table",
+        "conversion_table",
+        table.id,
+        {"name": table.name},
+    )
     return ConversionTableOut.model_validate(table)
 
 
@@ -584,26 +688,36 @@ def _test_or_404(db: Session, test_id: int) -> CodeTest:
     return test
 
 
-def create_code_test(db: Session, user: User, task_id: int, payload: CodeTestIn) -> AdminCodeTestOut:
+def create_code_test(
+    db: Session, user: User, task_id: int, payload: CodeTestIn
+) -> AdminCodeTestOut:
     task = _task_or_404(db, task_id)
     if task.task_type != TASK_TYPE_CODE:
         raise bad_request("Тесты можно добавлять только заданиям типа code")
     if variant_has_finished_attempts(db, task.variant_id):
-        raise conflict("Задание использовано в завершённых попытках: добавлять тесты нельзя")
+        raise conflict(
+            "Задание использовано в завершённых попытках: добавлять тесты нельзя"
+        )
 
     test = CodeTest(task_id=task.id, **payload.model_dump())
     db.add(test)
     db.commit()
     db.refresh(test)
-    log_action(db, user.id, "create_code_test", "code_test", test.id, {"task_id": task.id})
+    log_action(
+        db, user.id, "create_code_test", "code_test", test.id, {"task_id": task.id}
+    )
     return AdminCodeTestOut.model_validate(test)
 
 
-def patch_code_test(db: Session, user: User, test_id: int, payload: CodeTestPatchIn) -> AdminCodeTestOut:
+def patch_code_test(
+    db: Session, user: User, test_id: int, payload: CodeTestPatchIn
+) -> AdminCodeTestOut:
     test = _test_or_404(db, test_id)
     task = _task_or_404(db, test.task_id)
     if variant_has_finished_attempts(db, task.variant_id):
-        raise conflict("Задание использовано в завершённых попытках: править тесты нельзя")
+        raise conflict(
+            "Задание использовано в завершённых попытках: править тесты нельзя"
+        )
 
     for key, value in payload.model_dump(exclude_unset=True).items():
         setattr(test, key, value)
@@ -617,14 +731,18 @@ def delete_code_test(db: Session, user: User, test_id: int) -> int:
     test = _test_or_404(db, test_id)
     task = _task_or_404(db, test.task_id)
     if variant_has_finished_attempts(db, task.variant_id):
-        raise conflict("Задание использовано в завершённых попытках: удалять тесты нельзя")
+        raise conflict(
+            "Задание использовано в завершённых попытках: удалять тесты нельзя"
+        )
     db.delete(test)
     db.commit()
     log_action(db, user.id, "delete_code_test", "code_test", test_id, None)
     return test_id
 
 
-def run_reference_solution(db: Session, task_id: int, payload: RunReferenceIn) -> CodeRunOut:
+def run_reference_solution(
+    db: Session, task_id: int, payload: RunReferenceIn
+) -> CodeRunOut:
     task = _task_or_404(db, task_id)
     if task.task_type != TASK_TYPE_CODE:
         raise bad_request("Прогон эталона доступен только заданиям типа code")
@@ -635,14 +753,13 @@ def run_reference_solution(db: Session, task_id: int, payload: RunReferenceIn) -
         .all()
     )
     results, compile_log = run_code_tests(
-        db=db,
-        language=payload.language, 
-        source=payload.source_code, 
-        tests=tests
+        db=db, language=payload.language, source=payload.source_code, tests=tests
     )
     return CodeRunOut(
         tests=[
-            CodeTestResultOut(test_id=r.test_id, name=r.name, status=r.status, passed=r.passed)
+            CodeTestResultOut(
+                test_id=r.test_id, name=r.name, status=r.status, passed=r.passed
+            )
             for r in results
         ],
         all_passed=bool(results) and all(r.passed for r in results),

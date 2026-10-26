@@ -97,6 +97,7 @@ class ServerSetupDialog(QDialog):
 
         try:
             from ..api import ExamApi
+
             api = ExamApi(url)
             api.health(timeout=3.0)
         except Exception as exc:

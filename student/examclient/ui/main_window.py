@@ -46,7 +46,12 @@ class MainWindow(QMainWindow):
         self.exam_page = ExamPage(self.session)
         self.result_page = ResultPage()
         self.login_page.exit_requested.connect(self.close)
-        for page in (self.login_page, self.prestart_page, self.exam_page, self.result_page):
+        for page in (
+            self.login_page,
+            self.prestart_page,
+            self.exam_page,
+            self.result_page,
+        ):
             self.stack.addWidget(page)
         self.setCentralWidget(self.stack)
 
@@ -234,9 +239,7 @@ class MainWindow(QMainWindow):
         return self.api.finish(aid, reason, snapshot)
 
     def _download_file(self, file_id: int, name: str) -> None:
-        self.worker.submit(
-            "download", lambda: (name, self.api.download_file(file_id))
-        )
+        self.worker.submit("download", lambda: (name, self.api.download_file(file_id)))
 
     def _on_code_changed(self, task_id: int, language: str, source: str) -> None:
         self.exam_page.update_nav()
@@ -244,7 +247,9 @@ class MainWindow(QMainWindow):
     def _request_code_check(self, task_id: int) -> None:
         if not self.session.active:
             return
-        state = self.exam_page.current_code_state(task_id) or self.session.get_code(task_id)
+        state = self.exam_page.current_code_state(task_id) or self.session.get_code(
+            task_id
+        )
         if not state["source"].strip():
             QMessageBox.warning(self, "Проверка", "Введите код решения")
             return
@@ -252,12 +257,14 @@ class MainWindow(QMainWindow):
         aid = self.session.attempt_id
         self.worker.submit(
             "code_check",
-            lambda: (task_id, self.api.submit_code(
-                aid, task_id, state["language"], state["source"], run=True
-            )),
+            lambda: (
+                task_id,
+                self.api.submit_code(
+                    aid, task_id, state["language"], state["source"], run=True
+                ),
+            ),
         )
 
-        
     def _on_task_done(self, name: str, result, error) -> None:
         if name == "exam_info":
             if error:
@@ -278,7 +285,9 @@ class MainWindow(QMainWindow):
         elif name == "autosave":
             if error:
                 self._write_local_backup(self._last_snapshot)
-                self.exam_page.set_status("Нет связи с сервером - ответы сохранены локально")
+                self.exam_page.set_status(
+                    "Нет связи с сервером - ответы сохранены локально"
+                )
             else:
                 self._remove_local_backup()
                 self.exam_page.set_status(
@@ -303,7 +312,9 @@ class MainWindow(QMainWindow):
         elif name == "finish":
             if error:
                 self.exam_page.set_busy(False)
-                self.exam_page.set_status("Не удалось завершить экзамен. Повторите попытку завершения.")
+                self.exam_page.set_status(
+                    "Не удалось завершить экзамен. Повторите попытку завершения."
+                )
                 QMessageBox.critical(self, "Завершение", str(error))
                 return
             self._stop_locker("exam_finished")
@@ -339,7 +350,9 @@ class MainWindow(QMainWindow):
         elif name == "code_check":
             self.exam_page.set_status("Экзамен идёт")
             if error:
-                QMessageBox.warning(self, "Проверка", f"Не удалось проверить код: {error}")
+                QMessageBox.warning(
+                    self, "Проверка", f"Не удалось проверить код: {error}"
+                )
                 return
             task_id, run = result
             self.session.get_code(task_id)["dirty"] = False
@@ -349,7 +362,7 @@ class MainWindow(QMainWindow):
 
         elif name == "event":
             if error:
-                pass 
+                pass
 
     def closeEvent(self, event) -> None:
         if self.session.active:

@@ -32,7 +32,6 @@ from ..services import admin_content as ac
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 
-
 @router.get("/variants", response_model=list[VariantOut])
 def list_variants(admin: User = Depends(require_admin), db: Session = Depends(get_db)):
     return ac.list_variants(db)
@@ -131,7 +130,6 @@ def archive_task(
     return ac.archive_task(db, admin, task_id)
 
 
-
 @router.post("/tasks/{task_id}/fields", response_model=AdminFieldOut)
 def create_field(
     task_id: int,
@@ -162,7 +160,6 @@ def delete_field(
     return {"deleted": deleted}
 
 
-
 @router.post("/tasks/{task_id}/files", response_model=TaskFileOut)
 def upload_task_file(
     task_id: int,
@@ -183,9 +180,10 @@ def delete_task_file(
     return {"deleted": deleted}
 
 
-
 @router.get("/settings", response_model=SettingsOut)
-def get_settings_view(admin: User = Depends(require_admin), db: Session = Depends(get_db)):
+def get_settings_view(
+    admin: User = Depends(require_admin), db: Session = Depends(get_db)
+):
     return ac.get_settings_view(db)
 
 
@@ -198,9 +196,10 @@ def update_settings(
     return ac.update_settings(db, admin, payload)
 
 
-
 @router.get("/conversion-tables", response_model=list[ConversionTableOut])
-def list_conversion_tables(admin: User = Depends(require_admin), db: Session = Depends(get_db)):
+def list_conversion_tables(
+    admin: User = Depends(require_admin), db: Session = Depends(get_db)
+):
     return ac.list_conversion_tables(db)
 
 
@@ -232,7 +231,9 @@ def patch_conversion_table(
     return ac.patch_conversion_table(db, admin, table_id, payload)
 
 
-@router.post("/conversion-tables/{table_id}/activate", response_model=ConversionTableOut)
+@router.post(
+    "/conversion-tables/{table_id}/activate", response_model=ConversionTableOut
+)
 def activate_conversion_table(
     table_id: int,
     admin: User = Depends(require_admin),

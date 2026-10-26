@@ -51,6 +51,16 @@ export default function VariantsPage() {
     load()
   }
 
+  const removeVariant = async (id: number) => {
+    try {
+      await api.delete(`/admin/variants/${id}`)
+      message.success('Вариант и все его задания удалены')
+      load()
+    } catch (e: any) {
+      message.error(e.response?.data?.detail ?? 'Ошибка удаления')
+    }
+  }
+
   return (
     <Card
       title="Варианты"
@@ -79,10 +89,10 @@ export default function VariantsPage() {
           },
           { title: 'Заданий', dataIndex: 'tasks_count', width: 100 },
           { title: 'Попыток', dataIndex: 'attempts_count', width: 100 },
-                    {
+          {
             title: 'Действия',
             key: 'actions',
-            width: 320,
+            width: 400,
             render: (_v, r) => (
               <Space>
                 <Link to={`/variants/${r.id}`}>открыть</Link>
@@ -99,12 +109,21 @@ export default function VariantsPage() {
                     </Popconfirm>
                   </>
                 ) : (
-                  <Popconfirm
-                    title="восстановить вариант? он станет неактивным"
-                    onConfirm={() => unarchive(r.id)}
-                  >
-                    <a>восстановить</a>
-                  </Popconfirm>
+                  <>
+                    <Popconfirm
+                      title="восстановить вариант? он станет неактивным"
+                      onConfirm={() => unarchive(r.id)}
+                    >
+                      <a>восстановить</a>
+                    </Popconfirm>
+                    <Popconfirm
+                      title="Удалить вариант вместе со всеми заданиями и файлами? Только для архивных."
+                      okType="danger"
+                      onConfirm={() => removeVariant(r.id)}
+                    >
+                      <a style={{ color: '#ff4d4f' }}>удалить</a>
+                    </Popconfirm>
+                  </>
                 )}
               </Space>
             ),

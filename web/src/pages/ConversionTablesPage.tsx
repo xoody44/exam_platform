@@ -140,6 +140,16 @@ export default function ConversionTablesPage() {
     load()
   }
 
+  const removeTable = async (id: number) => {
+    try {
+      await api.delete(`/admin/conversion-tables/${id}`)
+      message.success('Таблица удалена')
+      load()
+    } catch (e: any) {
+      message.error(e.response?.data?.detail ?? 'Ошибка удаления')
+    }
+  }
+
   return (
     <Card
       title="Таблицы перевода баллов"
@@ -175,7 +185,7 @@ export default function ConversionTablesPage() {
           {
             title: 'Действия',
             key: 'actions',
-            width: 250,
+            width: 320,
             render: (_v, r) => (
               <Space>
                 <a onClick={() => setEditing(r)}>редактировать</a>
@@ -184,6 +194,13 @@ export default function ConversionTablesPage() {
                     <a>активировать</a>
                   </Popconfirm>
                 )}
+                <Popconfirm
+                  title="Удалить таблицу перевода? Если у эта таблица перевода использована хотя бы в одной из попыток, то ее нельзя удалить, пока не удалены попытки."
+                  okType="danger"
+                  onConfirm={() => removeTable(r.id)}
+                >
+                  <a>удалить</a>
+                </Popconfirm>
               </Space>
             ),
           },

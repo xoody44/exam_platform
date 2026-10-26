@@ -24,7 +24,7 @@ def main():
         else:
             print(f"администратор '{USERNAME}' найден (id={user.id}).")
             print(f"текущий хеш пароля: {user.password_hash[:30]}...")
-            
+
             if verify_password(PASSWORD, user.password_hash):
                 print("пароль уже правильный.")
             else:

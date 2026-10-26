@@ -29,7 +29,9 @@ def build_palette() -> QPalette:
     palette.setColor(QPalette.ColorRole.ToolTipBase, panel)
     palette.setColor(QPalette.ColorRole.ToolTipText, text)
     palette.setColor(QPalette.ColorRole.PlaceholderText, QColor("#8a8a8a"))
-    palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor("#777777"))
+    palette.setColor(
+        QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor("#777777")
+    )
     return palette
 
 

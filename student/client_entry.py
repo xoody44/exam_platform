@@ -25,6 +25,7 @@ sys.excepthook = _excepthook
 
 def main() -> None:
     from examclient.main import main as qt_main
+
     qt_main()
 
 

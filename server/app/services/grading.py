@@ -62,6 +62,7 @@ def compute_task_score(
 @dataclass
 class FieldGrade:
     """оценка одного поля ответа"""
+
     field_id: int
     raw_value: str
     normalized_value: str
@@ -72,6 +73,7 @@ class FieldGrade:
 @dataclass
 class TaskGrade:
     """оценка задания вместе с полями"""
+
     task_id: int
     number: int
     score: int
@@ -82,6 +84,7 @@ class TaskGrade:
 @dataclass
 class GradeResult:
     """итог автопроверки попытки: баллы и разбивка по заданиям"""
+
     primary_score: int
     max_primary_score: int
     test_score: int | None
@@ -244,6 +247,7 @@ def grade_attempt(db: Session, attempt: Attempt) -> GradeResult:
         conversion_table_id=table_id,
         tasks=task_grades,
     )
+
 
 def task_score_for_attempt(
     db: Session, task: Task, attempt: Attempt

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button, Card, Form, Input, InputNumber, Select, Space, Table, Tag } from 'antd'
+import { Button, Card, Form, Input, InputNumber, message, Popconfirm, Select, Space, Table, Tag } from 'antd'
 import type { TableProps } from 'antd'
 import { Link } from 'react-router-dom'
 import api from '../api/client'
@@ -32,7 +32,6 @@ function formatDuration(seconds: number | null): string {
 
 function formatDateTime(iso: string | null): string {
   if (!iso) return '-'
-  // Сервер хранит наивное UTC-время: добавляем Z, чтобы браузер корректно конвертировал в локальное.
   const withZone = /([+-]\d{2}:\d{2}|Z)$/.test(iso) ? iso : `${iso}Z`
   return new Date(withZone).toLocaleString('ru-RU')
 }
@@ -53,34 +52,39 @@ export default function AttemptsPage() {
     api.get<Variant[]>('/admin/variants').then((r) => setVariants(r.data)).catch(() => {})
   }, [])
 
+  const load = async () => {
+    setLoading(true)
+    try {
+      const { data } = await api.get<AttemptsList>('/admin/attempts', {
+        params: {
+          page,
+          per_page: perPage,
+          sort_by: sortBy,
+          sort_order: sortOrder,
+          ...filters,
+        },
+      })
+      setItems(data.items)
+      setTotal(data.pagination.total)
+    } catch {
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
-    let alive = true
-    const load = async () => {
-      setLoading(true)
-      try {
-        const { data } = await api.get<AttemptsList>('/admin/attempts', {
-          params: {
-            page,
-            per_page: perPage,
-            sort_by: sortBy,
-            sort_order: sortOrder,
-            ...filters,
-          },
-        })
-        if (!alive) return
-        setItems(data.items)
-        setTotal(data.pagination.total)
-      } catch {
-        // ошибка сети - показываем пустую таблицу, не роняем страницу
-      } finally {
-        if (alive) setLoading(false)
-      }
-    }
     load()
-    return () => {
-      alive = false
-    }
   }, [page, perPage, sortBy, sortOrder, filters])
+
+  const removeAttempt = async (id: number) => {
+    try {
+      await api.delete(`/admin/attempts/${id}`)
+      message.success('Попытка удалена')
+      load()
+    } catch (e: any) {
+      message.error(e.response?.data?.detail ?? 'Ошибка удаления')
+    }
+  }
 
   const columns: TableProps<AttemptListItem>['columns'] = [
     { title: 'ID', dataIndex: 'id', width: 60 },
@@ -104,8 +108,15 @@ export default function AttemptsPage() {
     {
       title: '',
       key: 'action',
-      width: 90,
-      render: (_v, record) => <Link to={`/attempts/${record.id}`}>открыть</Link>,
+      width: 140,
+      render: (_v, record) => (
+        <Space>
+          <Link to={`/attempts/${record.id}`}>открыть</Link>
+          <Popconfirm title="Удалить попытку?" onConfirm={() => removeAttempt(record.id)} okType="danger">
+            <a>удалить</a>
+          </Popconfirm>
+        </Space>
+      ),
     },
   ]
 

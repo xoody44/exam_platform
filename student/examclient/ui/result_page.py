@@ -30,12 +30,16 @@ class ResultPage(QWidget):
         self.scores_label = QLabel()
         self.scores_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.scores_label.setWordWrap(True)
-        self.scores_label.setStyleSheet("font-size: 20px; font-weight: 600; color: #ffffff;")
+        self.scores_label.setStyleSheet(
+            "font-size: 20px; font-weight: 600; color: #ffffff;"
+        )
         layout.addWidget(self.scores_label)
 
         self.table = QTableWidget(0, 3)
         self.table.setHorizontalHeaderLabels(["№ задания", "Ваши ответы", "Балл"])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Stretch
+        )
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         layout.addWidget(self.table)
 
@@ -67,7 +71,9 @@ class ResultPage(QWidget):
             suffix = f" из {max_test}" if max_test is not None else ""
             lines.append(f"Тестовый балл: {test}{suffix}")
         else:
-            lines.append("Тестовый балл: не рассчитан (ошибка настройки таблицы перевода)")
+            lines.append(
+                "Тестовый балл: не рассчитан (ошибка настройки таблицы перевода)"
+            )
         self.scores_label.setText("\n".join(lines))
 
         tasks = result["tasks"]
@@ -78,9 +84,15 @@ class ResultPage(QWidget):
             if code:
                 tests = code.get("tests") or []
                 passed = sum(1 for t in tests if t["passed"])
-                answers_text = f"Код на {code['language']}: тесты {passed} из {len(tests)}"
+                answers_text = (
+                    f"Код на {code['language']}: тесты {passed} из {len(tests)}"
+                )
             else:
                 answers_text = "; ".join(a["value"] or "-" for a in task["answers"])
             self.table.setItem(row, 1, QTableWidgetItem(answers_text))
-            score = "-" if task["score"] is None else f"{task['score']} из {task['max_score']}"
+            score = (
+                "-"
+                if task["score"] is None
+                else f"{task['score']} из {task['max_score']}"
+            )
             self.table.setItem(row, 2, QTableWidgetItem(score))

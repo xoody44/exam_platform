@@ -82,7 +82,9 @@ class LoginPage(QWidget):
             self.schools = self.api.get_schools()
         except ApiError as exc:
             self.schools = []
-            QMessageBox.warning(self, "Школы", f"Не удалось загрузить список школ: {exc}")
+            QMessageBox.warning(
+                self, "Школы", f"Не удалось загрузить список школ: {exc}"
+            )
             return
         self.school_combo.clear()
         for school in self.schools:

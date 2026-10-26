@@ -39,18 +39,15 @@ class SessionState:
     def attempt_id(self) -> int | None:
         return self.attempt["id"] if self.attempt else None
 
-
     @property
     def active(self) -> bool:
         return self.attempt is not None and not self.finished
-
 
     def load_attempt(self, data: dict) -> None:
         self.attempt = data["attempt"]
         self.tasks = data["tasks"]
         self.instruction = data.get("instruction_text", "")
         self.expires_at = parse_iso(self.attempt.get("expires_at"))
-
 
     def collect_answers(self) -> list[dict]:
         result = []
@@ -60,7 +57,7 @@ class SessionState:
                     {
                         "task_id": task["id"],
                         "field_id": item["id"],
-                        "value": self.answers.get(item["id"], "")
+                        "value": self.answers.get(item["id"], ""),
                     }
                 )
         return result

@@ -6,7 +6,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .core import get_app_root
 
-
 APP_ROOT = get_app_root()
 CONFIG_PATH = APP_ROOT / "config.json"
 STORAGE_DIR = APP_ROOT / "storage"
@@ -17,9 +16,7 @@ class Settings(BaseSettings):
     """настройки приложения из переменных окружения и значений по умолчанию"""
 
     model_config = SettingsConfigDict(
-        env_file=".env", 
-        env_file_encoding="utf-8", 
-        extra="ignore"
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
     database_url: str = f"sqlite:///{DB_PATH}"

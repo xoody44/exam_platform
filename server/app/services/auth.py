@@ -116,8 +116,13 @@ def student_login(db: Session, payload: StudentLoginIn) -> StudentLoginOut:
     student = get_or_create_student(db, school, payload)
 
     import logging
+
     logger = logging.getLogger("exam.auth")
-    logger.info("student_login: создан/найден ученик id=%s, full_name=%s", student.id, student.full_name)
+    logger.info(
+        "student_login: создан/найден ученик id=%s, full_name=%s",
+        student.id,
+        student.full_name,
+    )
 
     token = create_access_token(
         subject=f"student:{student.id}",

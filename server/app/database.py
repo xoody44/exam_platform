@@ -28,6 +28,7 @@ engine: Engine = create_engine(
 
 
 if settings.is_sqlite:
+
     @event.listens_for(engine, "connect")
     def _set_sqlite_pragma(dbapi_conn, _connection_record):
         cursor = dbapi_conn.cursor()
@@ -41,6 +42,7 @@ SessionLocal = sessionmaker(
     autocommit=False,
     expire_on_commit=False,
 )
+
 
 def get_db() -> Iterator[Session]:
     db = SessionLocal()
